@@ -1,0 +1,540 @@
+#!/usr/bin/env python3
+
+"""Opens aiogram listener, ..."""
+
+# region Regular dependencies
+import os
+import re                                    # Graceful shutdown
+import signal                                # Graceful shutdown
+import logging                               # Logging events
+import asyncio                               # Asynchronous sleep()
+from datetime import datetime
+from xmlrpc.client import Boolean            # Subscription checks
+from typing import Optional, Union
+from aiogram import Bot, Dispatcher          # Telegram bot API
+from aiogram import executor, types          # Telegram API
+from aiogram.types.message import ParseMode  # Send Markdown-formatted messages
+from dotenv import load_dotenv               # Load .env file
+from aiogram.dispatcher.filters.builtin import CommandStart
+from aiogram.dispatcher.filters import ChatTypeFilter
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.utils import exceptions
+
+from sqlalchemy.exc import DataError
+# endregion
+# region Local dependencies
+from modules import markup as nav           # Bot menus
+from modules import btntext                 # Telegram bot button text
+from modules import replies                 # Telegram bot information output
+from modules import coworking               # Coworking space information
+from modules import replies                 # Telegram bot information output
+from modules.db import DBManager            # Operations with sqlite db
+# endregion
+# region Modules
+#from modules.admin.main import Admin
+# endregion
+
+# region Logging
+# Create a logger instance
+log = logging.getLogger('main.py-aiogram')
+
+# Create log formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Сreate console logging handler and set its level
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(formatter)
+log.addHandler(ch)
+
+# Create file logging handler and set its level
+fh = logging.FileHandler(r'/data/logs/telegram_bot.log')
+fh.setFormatter(formatter)
+log.addHandler(fh)
+
+# region Set logging level
+logging_level_lower = os.getenv('LOGGING_LEVEL').lower()
+if logging_level_lower == 'debug':
+    log.setLevel(logging.DEBUG)
+    log.critical("Log level set to debug")
+elif logging_level_lower == 'info':
+    log.setLevel(logging.INFO)
+    log.critical("Log level set to info")
+elif logging_level_lower == 'warning':
+    log.setLevel(logging.WARNING)
+    log.critical("Log level set to warning")
+elif logging_level_lower == 'error':
+    log.setLevel(logging.ERROR)
+    log.critical("Log level set to error")
+elif logging_level_lower == 'critical':
+    log.setLevel(logging.CRITICAL)
+    log.critical("Log level set to critical")
+# endregion
+
+# region Debug lambda functions
+debug_dec = lambda message: log.debug(f'User {message.from_user.id} from chat {message.chat.id} called command `{message.text}`') or True
+admin_only = lambda message: db.is_admin(message.from_user.id)
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+# endregion
+# endregion
+
+# region Database
+db = DBManager()
+
+# region Modules
+# Coworking status
+coworking = coworking.Manager(db)
+# endregion
+
+# Get Telegram API token
+TELEGRAM_API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
+
+# Initialize bot and dispatcher
+bot = Bot(token=TELEGRAM_API_TOKEN)
+dp = Dispatcher(bot, storage=MemoryStorage())
+
+# region Bot state classes
+class AdminChangeUserGroup(StatesGroup):
+    user_id = State()
+    group_id = State()
+
+class AdminBroadcast(StatesGroup):
+    message = State()
+    scope = State()
+    confirm = State()
+
+# endregion
+
+# region Multiuse functions
+def chat_is_group(message: types.Message) -> bool:
+    """Check if message is sent from group or private chat"""
+    # Check if the type of cmessage is CallbackQuery
+    if isinstance(message, types.CallbackQuery):
+        message = message.message
+    if message.chat.type == 'group' or message.chat.type == 'supergroup':
+        return True
+    return False
+
+def get_main_keyboard(message: types.Message) -> InlineKeyboardMarkup:
+    btnClubs = KeyboardButton(btntext.CLUBS_BTN)
+    btnCoworkingStatus = KeyboardButton(btntext.COWORKING_STATUS)
+    btnProfileInfo = KeyboardButton(btntext.PROFILE_INFO)
+    btnHelp = KeyboardButton(btntext.HELP_ME)
+    mainMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(btnClubs,
+                                                             btnCoworkingStatus,
+                                                             btnProfileInfo,
+                                                             btnHelp)
+    if db.is_admin(message.from_user.id):
+        mainMenu.add(KeyboardButton(btntext.ADMIN_BTN))
+    return ReplyKeyboardRemove() if chat_is_group(message) else mainMenu
+
+async def send_coworking_notifications(is_open: bool):
+    cids = db.get_coworking_notification_chats()
+    for cid in cids:
+        if not cids[cid]["enabled"]:
+            continue
+        await bot.send_message(cid, replies.coworking_status_changed(is_open))
+
+async def broadcast(message: str, scope: str):
+    if scope == 'all':
+        cids = db.get_all_chats()
+    elif scope == 'admins':
+        cids = db.get_admin_chats()
+    elif scope == 'users':
+        cids = db.get_user_chats()
+    else:
+        raise ValueError("Invalid scope")
+    for cid in cids:
+        try:
+            await bot.send_message(cid, message)
+        except Exception as e:
+            log.error(f"Failed to send message to chat {cid}: {e}")
+
+async def is_group_admin(message: types.Message) -> bool:
+    # Check if chat is a group
+    if not (message.chat.type == 'group' or message.chat.type == 'supergroup'):
+        return True
+    # Check if the user is a group admin
+    administrators = await message.chat.get_administrators()
+    administrators = [adm['user']['id'] for adm in administrators]
+    if not message.from_user.id in administrators:
+        return False
+    return True
+
+def conv_call_to_msg(call: Union[types.CallbackQuery, types.Message]) -> types.Message:
+    if isinstance(call, types.Message):
+        return call
+    return call.message
+# endregion
+
+# region BotReplies
+# Command message handling
+@dp.message_handler(debug_dec, CommandStart())
+async def send_welcome(message: types.Message) -> None:
+    """Send welcome message and init user's record in DB"""
+    await message.reply(replies.welcome_message(message.from_user.first_name),
+                        reply_markup=get_main_keyboard(message))
+    db.add_regular_user(message.from_user.id, message.from_user.first_name)
+
+# region Cancel all states
+@dp.callback_query_handler(lambda c: c.data == 'cancel', state='*')
+@dp.message_handler(state='*', commands=['cancel'])
+@dp.message_handler(lambda message: message.text.lower() == 'cancel' or message.text.lower() == btntext.CANCEL.lower(), state='*')
+async def cancel_handler(cmessage: Union[types.Message, types.CallbackQuery], state: FSMContext):
+    """Allow user to cancel any action"""
+    log.debug(f"User {cmessage.from_user.id} canceled an action")
+    # Cancel state and inform user about it
+    await state.finish()
+    # Check if the type of cmessage is CallbackQuery
+    if isinstance(cmessage, types.CallbackQuery):
+        await bot.send_message(cmessage.message.chat.id,
+                               'Действие отменено', reply_markup=get_main_keyboard(cmessage))
+        return
+    await bot.send_message(cmessage.chat.id,
+                           'Действие отменено', reply_markup=get_main_keyboard(cmessage))
+# endregion
+
+@dp.message_handler(debug_dec, commands=['amiadmin'])
+async def check_admin(message: types.Message) -> None:
+    """Check if user is admin"""
+    if db.is_admin(message.from_user.id):
+        await message.reply("Admin OK")
+    else:
+        await message.reply(replies.permission_denied())
+
+@dp.message_handler(debug_dec, commands=['get_groups'])
+async def get_groups(message: types.Message) -> None:
+    """Get groups"""
+    await message.reply(str(db.get_groups()))
+
+@dp.message_handler(debug_dec, commands=['get_users'])
+async def get_users(message: types.Message) -> None:
+    """Get user info"""
+    await message.reply(str(db.get_users_str()))
+
+@dp.message_handler(debug_dec, commands=['get_users_verbose'])
+async def get_users_verbose(message: types.Message) -> None:
+    """Get verbose user info"""
+    await message.reply(str(db.get_users_verbose_str()))
+
+# region Coworking notifications
+# region User interaction
+@dp.callback_query_handler(lambda c: c.data == 'toggle_coworking_notifications', state='*')
+@dp.message_handler(debug_dec, commands=['notify'])
+async def notify(message: types.Message) -> None:
+    """Turn on notifications for a given chat ID"""
+    message = conv_call_to_msg(message)
+    is_grp_admin = await is_group_admin(message)
+    if not is_grp_admin:
+        await message.reply(replies.permission_denied())
+        return
+    current_status = db.toggle_coworking_notifications(message.chat.id)
+    message = conv_call_to_msg(message)
+    await message.reply(replies.coworking_notifications_on() if current_status else replies.coworking_notifications_off())
+
+@dp.message_handler(debug_dec, commands=['notify_status'])
+async def notify_status(message: types.Message) -> None:
+    """Get notification status for a given chat ID"""
+    if db.get_coworking_notifications(message.chat.id):
+        await message.reply(replies.coworking_notifications_on())
+    else:
+        await message.reply(replies.coworking_notifications_off())
+# endregion
+# endregion
+
+# region Administration
+@dp.message_handler(debug_dec, admin_only, lambda message: message.text.lower() == btntext.ADMIN_BTN.lower())
+@dp.message_handler(debug_dec, admin_only, commands=['admin'])
+async def admin_panel(message: types.Message) -> None:
+    """Send admin panel"""
+    inlAdminChangeGroupBtn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP, callback_data='change_user_group')
+    markup = InlineKeyboardMarkup().add(inlAdminChangeGroupBtn)
+    markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING if coworking.get_status() else btntext.OPEN_COWORKING, callback_data='toggle_coworking_status'))
+    await message.reply(replies.admin_panel(coworking.get_status()), reply_markup=markup)
+    log.debug(f"User {message.from_user.id} opened the admin panel")
+
+# region Coworking administration
+@dp.callback_query_handler(lambda c: c.data == 'toggle_coworking_status')
+@dp.message_handler(debug_dec, admin_only, commands=['coworking_toggle'])
+async def toggle_coworking_status(message: types.Message) -> None:
+    """Toggle coworking status"""
+    status = coworking.toggle_status(message.from_user.id)
+    status_str = f"Коворкинг теперь {'открыт' if status else 'закрыт'}"
+    await send_coworking_notifications(status)
+    if isinstance(message, types.CallbackQuery):
+        await message.message.reply(status_str)
+    await message.reply(status_str)
+    log.info(f"Coworking {'opened' if status else 'closed'} by {message.from_user.id}")
+
+@dp.message_handler(debug_dec, admin_only, commands=['coworking_open'])
+async def coworking_open(message: types.Message) -> None:
+    """Set coworking status to open"""
+    if coworking.get_status():
+        await message.reply("Коворкинг уже открыт")
+        return
+    coworking.open(message.from_user.id)
+    await send_coworking_notifications(True)
+    await message.reply("Коворкинг теперь открыт")
+    log.info(f"Coworking opened by {message.from_user.id}")
+
+@dp.message_handler(debug_dec, admin_only, commands=['coworking_close'])
+async def coworking_close(message: types.Message) -> None:
+    """Set coworking status to closed"""
+    if not coworking.get_status():
+        await message.reply("Коворкинг уже закрыт")
+        return
+    coworking.close(message.from_user.id)
+    await send_coworking_notifications(False)
+    await message.reply("Коворкинг теперь закрыт")
+    log.info(f"Coworking closed by {message.from_user.id}")
+
+@dp.message_handler(debug_dec, admin_only, commands=['get_coworking_status_log'])
+async def get_coworking_status_log(message: types.Message) -> None:
+    """Get coworking status log"""
+    await message.reply(coworking.get_log_str())
+
+@dp.message_handler(debug_dec, admin_only, commands=['update_admin_kb'])
+async def update_admin_kb(message: types.Message) -> None:
+    """Update admin menu"""
+    admins = db.get_admin_chats()
+    for admin in admins:
+        bot.send_message(admin, "Клавиатура администратора обновлена", reply_markup=get_main_keyboard(message))
+    log.info(f"Admin keyboard updated by {message.from_user.id} for {len(admins)} admins")
+    await message.reply("Admin menu updated")
+# endregion
+
+# region Broadcast
+@dp.message_handler(debug_dec, admin_only, commands=['broadcast'])
+async def admin_broadcast_stage0(message: types.Message, state: FSMContext) -> None:
+    await message.reply(f"Введите текст для рассылки\n\n{replies.cancel_action()}")
+    await state.set_state(AdminBroadcast.message.state)
+
+@dp.message_handler(debug_dec, admin_only, state=AdminBroadcast.message.state)
+async def admin_broadcast_stage1(message: types.Message, state: FSMContext) -> None:
+    await state.update_data(message=message.text)
+    await message.reply(f"Выберите ширину рассылки\n\n{replies.cancel_action()}", reply_markup=nav.adminBroadcastScopeMenu)
+    await state.set_state(AdminBroadcast.scope.state)
+
+@dp.message_handler(debug_dec, admin_only, state=AdminBroadcast.scope.state)
+async def admin_broadcast_stage2(message: types.Message, state: FSMContext) -> None:
+    await state.update_data(scope=message.text)
+    state_data = await state.get_data()
+    await message.reply(f"Подтвердите рассылку\nТекст рассылки:\n\"\"\"{state_data['message']}\"\"\"\n\n{replies.cancel_action()}", reply_markup=nav.adminBroadcastConfirmMenu)
+    await state.set_state(AdminBroadcast.confirm.state)
+
+@dp.message_handler(debug_dec, admin_only, state=AdminBroadcast.confirm.state)
+async def admin_broadcast_stage3(message: types.Message, state: FSMContext) -> None:
+    # Check if user confirmed the broadcast
+    if message.text != btntext.CONFIRM:
+        message.reply("Рассылка отменена")
+        await state.finish()
+    state_data = await state.get_data()
+    if state_data['scope'] == btntext.EVERYONE:
+        scope = 'all'
+    elif state_data['scope'] == btntext.USERS:
+        scope = 'users'
+    elif state_data['scope'] == btntext.ADMINS:
+        scope = 'admins'
+    else:
+        await bot.send_message(message.from_user.id, "Неверный тип рассылки")
+        await state.finish()
+        return
+    # Send broadcast
+    await broadcast(state_data['message'], scope)
+    log.info(f"Admin {message.from_user.id} broadcasted message to scope {scope}\nMessage:\n\"\"\"\n{state_data['message']}\n\"\"\"")
+    await state.finish()
+# endregion
+# endregion
+
+# region Administration
+@dp.callback_query_handler(lambda c: c.data == 'change_user_group')
+async def change_user_group_stage0(call: types.CallbackQuery, state: FSMContext) -> None:
+    """Change user group, stage 0"""
+    await state.set_state(AdminChangeUserGroup.user_id.state)
+    await call.message.edit_text(f"Введите ID пользователя\n\n{replies.cancel_action()}")
+
+@dp.message_handler(state=AdminChangeUserGroup.user_id)
+async def change_user_group_stage1(message: types.Message, state: FSMContext) -> None:
+    """Change user group, stage 1"""
+    user_id = message.text
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for group_name in db.get_groups_and_ids_as_dict_namekey():
+        keyboard.add(types.KeyboardButton(group_name))
+    await message.reply(f"Выберите группу\n\n{replies.cancel_action()}", reply_markup=keyboard)
+    await state.update_data(user_id=user_id)
+    await state.set_state(AdminChangeUserGroup.group_id.state)  # Also accepted: await AdminChangeUserGroup.next()
+
+@dp.message_handler(state=AdminChangeUserGroup.group_id)
+async def change_user_group_stage2(message: types.Message, state: FSMContext) -> None:
+    """Change user group, stage 2"""
+    state_data = await state.get_data()
+    user_id = state_data['user_id']
+    try:
+        group_id = db.get_groups_and_ids_as_dict_namekey()[message.text]["gid"]
+    except Exception as exc:
+        await message.reply("I encountered an exception! Details below:\n\n" + str(exc))
+        return
+    try:
+        db.set_user_group(user_id, group_id)
+    except DataError:
+        await message.reply("Invalid data sent to DB. Please try again")
+    await message.reply("User group changed", reply_markup=types.ReplyKeyboardRemove())
+    log.info(f"User {message.from_user.id} changed user {user_id} group to {group_id}")
+    await state.finish()
+
+@dp.message_handler(debug_dec, admin_only, commands=['get_notif_db'])
+async def get_notif_db(message: types.Message) -> None:
+    """Get notification database"""
+    await message.reply(db.get_coworking_notification_chats_str())
+
+@dp.message_handler(debug_dec, admin_only, commands=['stats'])
+async def get_stats(message: types.Message) -> None:
+    """Get stats"""
+    await message.reply(replies.stats(db.get_stats()))
+# endregion
+
+# region User Data
+@dp.message_handler(debug_dec, commands=['bio'])
+async def user_data_get_bio(message: types.Message) -> None:
+    """Get user bio"""
+    await message.reply(db.get_user_data_bio(message.from_user.id))
+
+@dp.message_handler(debug_dec, commands=['resume'])
+async def user_data_get_resume(message: types.Message) -> None:
+    """Get user resume"""
+    await message.reply(db.get_user_data_resume(message.from_user.id))
+
+@dp.callback_query_handler(lambda c: c.data == 'edit_profile')
+async def edit_profile(call: types.CallbackQuery) -> None:
+    """Edit user profile"""
+    fields = list(db.get_user_data_short(call.from_user.id).keys())
+    field_names = replies.profile_fields()
+    keyboard = types.InlineKeyboardMarkup(resize_keyboard=True)
+    for key in fields:
+        if key == 'uid':
+            continue
+        keyboard.add(types.InlineKeyboardButton(field_names[key], callback_data=f'edit_profile_{key}'))
+    await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
+                                 reply_markup=keyboard)
+    await call.message.reply("Что изменим?", reply_markup=nav.inlCancelMenu)
+# endregion
+
+# region Plaintext answers in groups (chats/superchats)
+@dp.message_handler(debug_dec, groups_only, commands=['plaintext'])
+async def plaintext_answers_toggle(message: types.Message):
+    """Toggle plaintext answers boolean in database"""
+    is_grp_admin = await is_group_admin(message)
+    if not is_grp_admin:
+        await message.reply(replies.permission_denied())
+        return
+    status = db.toggle_message_answers_status(message.chat.id)
+    await message.reply(f"Ответы на обычные сообщения теперь {'включены 🟢' if status else 'выключены 🔴'}")
+
+@dp.message_handler(debug_dec, groups_only, commands=['plaintext_status'])
+async def plaintext_answers_status(message: types.Message):
+    """Get plaintext answers boolean status"""
+    status = db.get_message_answers_status(message.chat.id)
+    await message.reply(f"Ответы на обычные сообщения {'включены 🟢' if status else 'выключены 🔴'}")
+# endregion
+
+# region Fix keyboard !TODO: FIX
+@dp.message_handler(commands=['fix'])
+async def fix_keyboard(message: types.Message) -> None:
+    """Fix keyboard"""
+    msg = await bot.send_message(message.from_user.id, "Чиним клавиатуру...", reply_markup=ReplyKeyboardRemove())
+    await asyncio.sleep(0.5)
+    await msg.edit_reply_markup(get_main_keyboard(message))
+    await msg.edit_text("Починили клавиатуру!")
+
+# endregion
+
+# region Debug
+@dp.message_handler(debug_dec, admin_only, commands=['debug_cw'])
+async def debug_cw(message: types.Message) -> None:
+    """Debug coworking"""
+    await message.reply(db.get_coworking_notification_chats())
+# endregion
+
+# region Club information
+@dp.callback_query_handler(lambda c: c.data in [i+'_club_info' for i in ['ctf', 'hackathon', 'design', 'gamedev']])
+async def club_info(call: types.CallbackQuery) -> None:
+    """Club info"""
+    club = call.data.split('_')[0]
+    # Edit previous bot message
+    if club == 'ctf':
+        await call.message.edit_text(replies.ctf_club_info(),
+                                     reply_markup=nav.inlClubsMenu)
+    elif club == 'hackathon':
+        await call.message.edit_text(replies.hackathon_club_info(),
+                                     reply_markup=nav.inlClubsMenu)
+    elif club == 'design':
+        await call.message.edit_text(replies.design_club_info(),
+                                     reply_markup=nav.inlClubsMenu)
+    elif club == 'gamedev':
+        await call.message.edit_text(replies.gamedev_club_info(),
+                                     reply_markup=nav.inlClubsMenu)
+# endregion
+
+# Normal messages
+@dp.message_handler()
+async def answer(message: types.Message) -> None:
+    """Answer to random messages and messages from buttons"""
+    # Menus
+    text_lower = message.text.lower()
+    executed = False
+    try:
+        if message.text == btntext.COWORKING_STATUS:
+            executed = True
+            await message.reply(replies.coworking_status(coworking.get_status()),
+                                reply_markup=get_main_keyboard(message))
+        elif message.text == btntext.PROFILE_INFO:
+            executed = True
+            if message.chat.type == 'group':
+                await message.reply(replies.profile_info_only_in_pm())
+                return
+            await bot.send_message(message.from_user.id,
+                                replies.profile_info(db.get_user_data_short(message.from_user.id)),
+                                reply_markup=nav.inlProfileMenu)
+        elif message.text == btntext.HELP_ME:
+            if message.chat.id != message.from_user.id:
+                return
+            executed = True
+            is_admin = db.is_admin(message.chat.id)  # Checking chat ID to avoid showing admin commands in groups
+            are_notifications_on = db.get_coworking_notifications(message.chat.id)
+            inlHelpMenu = InlineKeyboardMarkup(resize_keyboard=True)
+            inlHelpMenu.add(InlineKeyboardButton(f"{'Выключить' if are_notifications_on else 'Включить'} уведомления о статусе коворкинга (сейчас {'включены 🟢' if are_notifications_on else 'выключены 🔴'})",
+                                                callback_data='toggle_coworking_notifications'))
+            if is_admin:
+                status = coworking.get_status()
+                inlHelpMenu.add(InlineKeyboardButton(f"{'Закрыть' if status else 'Открыть'} коворкинг (сейчас {'открыт 🟢' if status else 'закрыт 🔴'})",
+                                callback_data='toggle_coworking_status'))
+            await message.reply(replies.help_message(),
+                                reply_markup=inlHelpMenu)
+    finally:
+        if executed:
+            return
+
+    # Plaintext message answers — checking db value for SuperChats.message_answers_enabled
+    if chat_is_group(message):
+        if not db.get_message_answers_status(message.chat.id):
+            log.debug(f"Received a message in a group, but plaintext_message_answers is False for {message.chat.id}")
+            return
+
+    if any(word in text_lower for word in ['коворк', 'кв']) and any(word in text_lower for word in ['статус', 'открыт', 'закрыт']):
+        await message.reply(replies.coworking_status(coworking.get_status()),
+                            reply_markup=get_main_keyboard(message))
+    elif message.text == btntext.CLUBS_BTN:
+        await message.reply(replies.club_info_general(),
+                            reply_markup=nav.inlClubsMenu)
+# endregion
+
+# region StartUp
+def run() -> None:
+    log.info('Starting...')
+    log.info('Starting AIOgram...')
+    executor.start_polling(dp, skip_updates=True)
+    log.info('AIOgram stopped successfully')
+# endregion
