@@ -221,7 +221,7 @@ def coworking_open_after_hours() -> str:
     return """🚧 Коворкинг открыт в нерабочее время!"""
 
 def coworking_status_already_responsible() -> str:
-    return """🚧🔴 Ты уже отвечаешь за коворкинг!"""
+    return """🔑🚧🔴 Ты уже отвечаешь за коворкинг!"""
 
 def coworking_status_now_responsible() -> str:
-    return """🚧🟢 Теперь ты отвечаешь за коворкинг!"""
+    return """🔑🚧🟢 Теперь ты отвечаешь за коворкинг!"""
