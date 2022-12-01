@@ -272,6 +272,13 @@ class DBManager:
         uid: int = self.session.query(Coworking).order_by(Coworking.id.desc()).first().uid
         return self.session.query(User).filter(User.uid == uid).first().uname
 
+    def coworking_status_set_uid_responsible(self, uid: int) -> bool:
+        """Set the responsible uid for the coworking space key"""
+        coworking = self.session.query(Coworking).order_by(Coworking.id.desc()).first()
+        coworking.uid = uid
+        self.session.commit()
+        return True
+
     def get_coworking_log(self) -> List[Coworking]:
         return self.session.query(Coworking).all()
 

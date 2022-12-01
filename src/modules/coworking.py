@@ -47,3 +47,6 @@ class Manager:
 
     def opened_today(self) -> bool:
         return self.db.coworking_opened_today()
+
+    def is_responsible(self, uid: int) -> bool:
+        return self.db.get_coworking_responsible() == uid

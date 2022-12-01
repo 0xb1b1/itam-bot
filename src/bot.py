@@ -307,6 +307,8 @@ async def admin_panel(message: types.Message) -> None:
     inlAdminChangeGroupBtn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP, callback_data='change_user_group')
     markup = InlineKeyboardMarkup().add(inlAdminChangeGroupBtn)
     markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING if cw_binary_status else btntext.OPEN_COWORKING, callback_data='toggle_coworking_status'))
+    if not coworking.is_responsible(message.from_user.id):
+        markup.add(InlineKeyboardButton(btntext.COWORKING_TAKE_RESPONSIBILITY, callback_data='coworking_take_responsibility'))
     await message.reply(replies.admin_panel(coworking.get_status()), reply_markup=markup)
     log.debug(f"User {message.from_user.id} opened the admin panel")
 
@@ -319,9 +321,19 @@ async def trim_coworking_status_log(message: Union[types.CallbackQuery, types.Me
     coworking.trim_log(limit=limit)
     await conv_call_to_msg(message).reply(f"Лог статуса коворкинга урезан; последние {limit} записей сохранены")
 
+@dp.callback_query_handler(lambda c: c.data == 'coworking_take_responsibility')
+async def coworking_take_responsibility(cmessage: Union[types.CallbackQuery, types.Message]) -> None:
+    """Take responsibility for coworking status"""
+    message = conv_call_to_msg(cmessage)
+    if coworking.is_responsible(cmessage.from_user.id):
+        await message.reply(replies.coworking_status_already_responsible())
+        return
+    db.coworking_status_set_uid_responsible(cmessage.from_user.id)
+    await message.reply(replies.coworking_status_now_responsible())
+
 @dp.callback_query_handler(lambda c: c.data == 'toggle_coworking_status')
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_toggle'])
-async def toggle_coworking_status(message: types.Message) -> None:
+async def toggle_coworking_status(message: Union[types.CallbackQuery, types.Message]) -> None:
     """Toggle coworking status"""
     if coworking.get_status() not in [CoworkingStatus.open, CoworkingStatus.closed]:
         await conv_call_to_msg(message).reply(replies.coworking_status_not_binary())
