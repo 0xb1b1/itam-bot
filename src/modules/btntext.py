@@ -12,6 +12,7 @@ ADMIN_BTN = "Управление"
 
 # Inline admininstration buttons
 INL_ADMIN_EDIT_GROUP = "Изменить администратора"
+TRIM_COWORKING_LOG = "🧹 Обрезать лог статусов коворкинга"
 
 # Inline user profile buttons
 NOT_SET = "🔴 Не указано"

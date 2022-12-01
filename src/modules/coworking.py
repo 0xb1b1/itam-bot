@@ -36,6 +36,9 @@ class Manager:
     def get_log_str(self) -> str:
         return self.db.get_coworking_log_str()
 
+    def trim_log(self, limit: int = 10) -> None:
+        return self.db.trim_coworking_status_log(limit)
+
     def notified_closed_during_hours_today(self) -> bool:
         return self.db.coworking_notified_admin_closed_during_hours_today()
 

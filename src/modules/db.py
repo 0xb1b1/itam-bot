@@ -278,6 +278,14 @@ class DBManager:
     def get_coworking_log_str(self) -> str:
         return "\n".join([f"{i+1}. {c.time} - {c.uid} - {'open' if c.status == CoworkingStatus.open else ('event_open' if CoworkingStatus.event_open else ('temp_closed' if CoworkingStatus.temp_closed else 'closed'))}" for i, c in enumerate(self.get_coworking_log())])
 
+    def trim_coworking_status_log(self, limit: int = 10):
+        """Trim the coworking log to the specified limit, starting from the oldest entry"""
+        log = self.get_coworking_log()
+        if len(log) > limit:
+            for i in range(len(log) - limit):
+                self.session.delete(log[i])
+            self.session.commit()
+
     # region Coworking notifications
     def change_coworking_notifications(self, cid: int, notify: bool) -> None:
         """Change coworking notifications boolean value for a chat id (cid)"""

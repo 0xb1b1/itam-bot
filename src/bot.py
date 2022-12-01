@@ -142,7 +142,7 @@ async def send_coworking_notifications(is_open: bool, delta_mins: int = 0) -> No
         if not cids[cid]["notifications_enabled"]:
             continue
         await bot.send_message(cid, replies.coworking_status_changed(is_open,
-                                                                     responsible_uname=db.get_coworking_responsible(),
+                                                                     responsible_uname=db.get_coworking_responsible_uname(),
                                                                      delta_mins=delta_mins))
 
 async def broadcast(message: str, scope: str, custom_scope: list = None) -> None:
@@ -311,6 +311,14 @@ async def admin_panel(message: types.Message) -> None:
     log.debug(f"User {message.from_user.id} opened the admin panel")
 
 # region Coworking administration
+@dp.callback_query_handler(lambda c: c.data == 'trim_coworking_status_log', state='*')
+@dp.message_handler(debug_dec, admin_only, commands=['trim_coworking_status_log'])
+async def trim_coworking_status_log(message: Union[types.CallbackQuery, types.Message]) -> None:
+    """Trim coworking log"""
+    limit = 10 # TODO: make this configurable
+    coworking.trim_log(limit=limit)
+    await conv_call_to_msg(message).reply(f"Лог статуса коворкинга урезан; последние {limit} записей сохранены")
+
 @dp.callback_query_handler(lambda c: c.data == 'toggle_coworking_status')
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_toggle'])
 async def toggle_coworking_status(message: types.Message) -> None:
@@ -371,6 +379,13 @@ async def coworking_temp_close_stage1(message: types.Message, state: FSMContext)
         delta = int(message.text)
     except ValueError:
         await message.reply(f"Неверный формат! Попробуй еще раз\n\n{replies.cancel_action()}")
+        return
+    # Validate delta value
+    if delta > 60:
+        await message.reply(f"Коворкинг будет закрыт слишком долго! Введи значение от 5 до 60 минут или закрой его\n\n{replies.cancel_action()}")
+        return
+    elif delta < 5:
+        await message.reply(f"Слишком маленький перерыв! Введи значение от 5 до 60 минут или закрой коворкинг\n\n{replies.cancel_action()}")
         return
     # Save delta
     await state.update_data(delta=delta)
@@ -515,7 +530,9 @@ async def get_notif_db(message: types.Message) -> None:
 @dp.message_handler(debug_dec, admin_only, commands=['stats'])
 async def get_stats(message: types.Message) -> None:
     """Get stats"""
-    await message.reply(replies.stats(db.get_stats()))
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG, callback_data="trim_coworking_status_log"))
+    await message.reply(replies.stats(db.get_stats()), reply_markup=markup)
 # endregion
 
 # region User Data
