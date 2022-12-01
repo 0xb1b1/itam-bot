@@ -1,6 +1,7 @@
 """Models for SQLAlchemy"""
 import enum
 from datetime import datetime
+from sqlalchemy import ForeignKey
 from sqlalchemy import Column, Integer, BigInteger, Boolean, Text, Date, Enum, DateTime, TypeDecorator
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -12,6 +13,13 @@ class GroupType(enum.IntEnum):
     itam_hq = 1
     club_admins = 2
     users = 3
+
+class CoworkingStatus(enum.IntEnum):
+    """Coworking statuses"""
+    open = 1
+    event_open = 2
+    temp_closed = 3
+    closed = 4
 # endregion
 
 # region Custom column types
@@ -39,11 +47,13 @@ class IntEnum(TypeDecorator):
 
 class User(Base):
     """Admin model for SQLAlchemy"""
-    __tablename__ = 'admins'
+    __tablename__ = 'users'
     uid = Column(BigInteger,
                  primary_key=True,
                  autoincrement=False)
-    name = Column(Text)
+    uname = Column(Text, default=None)
+    first_name = Column(Text)
+    last_name = Column(Text, default=None)
     gid = Column(IntEnum(GroupType), default=GroupType.users)
 
 class Group(Base):
@@ -59,10 +69,18 @@ class Coworking(Base):
     """Coworking status model for SQLAlchemy"""
     __tablename__ = 'coworking_status'
     id = Column(BigInteger,
-                primary_key=True)    # Unique event ID
-    uid = Column(BigInteger)         # User ID
-    time = Column(DateTime)          # Time of the event
-    status = Column(Boolean)         # Coworking status
+                primary_key=True)               # Unique event ID
+    uid = Column(BigInteger)                    # User ID
+    time = Column(DateTime)                     # Time of the event
+    status = Column(IntEnum(CoworkingStatus))   # Coworking status
+    temp_delta = Column(Integer, default=None)  # Temporarily closed delta (in minutes)
+
+
+class AdminCoworkingNotification(Base):
+    __tablename__ = 'admin_coworking_notifications'
+    id = Column(BigInteger,
+                primary_key=True)
+    status_id = Column(BigInteger)
 
 class UserData(Base):
     """User data model for SQLAlchemy"""
@@ -74,9 +92,9 @@ class UserData(Base):
     phone = Column(Text)
     email = Column(Text)
 
-class SuperChats(Base):
-    """SuperChats model for SQLAlchemy"""
-    __tablename__ = 'superchats'
+class ChatSettings(Base):
+    """ChatSettings model for SQLAlchemy"""
+    __tablename__ = 'chat_settings'
     cid = Column(BigInteger, primary_key=True)  # Chat ID
     notifications_enabled = Column(Boolean, default=False)    # Coworking notifications
     plaintext_answers_enabled = Column(Boolean, default=False)  # Message answers (answer to regular messages from users)

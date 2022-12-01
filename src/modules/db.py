@@ -5,9 +5,10 @@ from os import getenv
 from time import sleep
 from sqlalchemy.orm import sessionmaker
 from modules.models import Base, User, UserData
+from modules.models import CoworkingStatus
 from modules.models import Group, GroupType
-from modules.models import SuperChats
-from modules.models import Coworking
+from modules.models import ChatSettings
+from modules.models import Coworking, AdminCoworkingNotification
 from sqlalchemy import create_engine
 from typing import List, Union
 from sqlalchemy.exc import OperationalError as sqlalchemyOpError
@@ -15,12 +16,13 @@ from psycopg2 import OperationalError as psycopg2OpError
 # endregion
 
 class DBManager:
-    def __init__(self):
+    def __init__(self, log):
         self.pg_user = getenv('PG_USER')
         self.pg_pass = getenv('PG_PASS')
         self.pg_host = getenv('PG_HOST')
         self.pg_port = getenv('PG_PORT')
         self.pg_db   = getenv('PG_DB')
+        self.log = log
         connected = False
         while not connected:
             try:
@@ -80,20 +82,20 @@ class DBManager:
         """Check if a user exists in the database"""
         return self.session.query(User).filter(User.uid == uid).first() is not None
 
-    def add_regular_user(self, uid: int, name: str) -> None:
+    def add_regular_user(self, uid: int, uname: str, first_name: str, last_name: str) -> None:
         """Add a regular user of type `user` to the database"""
         if self.user_exists(uid):
             return
-        user = User(uid=uid, name=name, gid=GroupType.users)
+        user = User(uid=uid, uname=uname, first_name=first_name, last_name=last_name, gid=GroupType.users)
         self.session.add(user)
         self.session.commit()
         userdata = UserData(uid=uid)
         self.session.add(userdata)
         self.session.commit()
 
-    def add_admin(self, uid: int, name: str, gid: int):
+    def add_admin(self, uid: int, first_name: str, last_name: str, gid: int):
         """Add an admin to the database"""
-        admin = User(uid=uid, name=name, gid=gid)
+        admin = User(uid=uid, first_name=first_name, last_name=last_name, gid=gid)
         self.session.add(admin)
         self.session.commit()
         userdata = UserData(uid=uid)
@@ -101,13 +103,32 @@ class DBManager:
         self.session.commit()
 
     def get_group_name(self, gid: int) -> str:
-        """Get the name of a group from its id"""
+        """Get the name of a group from its ID"""
         group = self.session.query(Group).filter(Group.gid == gid).first()
         try:
             name = group.name
         except AttributeError:
             return None
         return name
+
+    def get_uname(self, uid: int) -> str:
+        return self.session.query(User).filter(User.uid == uid).first().uname
+
+    def set_uname(self, uid: int, uname: str) -> None:
+        """Set the username of a user"""
+        self.session.query(User).filter(User.uid == uid).first().uname = uname
+        self.session.commit()
+
+    def is_uname_set(self, uid: int) -> bool:
+        """Check if the uid has a uname set"""
+        user = self.session.query(User).filter(User.uid == uid).first()
+        if user is None:
+            return False
+        return user.uname is not None
+
+    def does_user_exist(self, uid: int) -> bool:
+        """Check if a user exists in the database"""
+        return self.session.query(User).filter(User.uid == uid).first() is not None
 
     def is_admin(self, uid: int) -> bool:
         """Check if a user is in the admins list"""
@@ -120,8 +141,7 @@ class DBManager:
 
     def set_user_group(self, uid: int, gid: int):
         """Set the group id of an admin"""
-        admin = self.session.query(User).filter(User.uid == uid).first()
-        admin.gid = gid
+        self.session.query(User).filter(User.uid == uid).first().gid = gid
         self.session.commit()
 
     def get_groups_and_ids(self) -> List[Group]:
@@ -157,15 +177,15 @@ class DBManager:
         """Get a string list of users of a given group"""
         if gid is not None:
             users = self.session.query(User).filter(User.gid == gid).all()
-            return "\n".join([f"{i+1}. {u.name} [{u.uid}]" for i, u in enumerate(users)])
+            return "\n".join([f"{i+1}. {u.first_name} [{u.uid}]" for i, u in enumerate(users)])
         else:
             users = self.session.query(User).all()
-            return "\n".join([f"{i+1}. {u.name} [{u.uid}]" for i, u in enumerate(users)])
+            return "\n".join([f"{i+1}. {u.first_name} [{u.uid}]" for i, u in enumerate(users)])
 
     def get_users_verbose_str(self) -> str:
         """Get a string list of users and their groups"""
         users = self.session.query(User).all()
-        return "\n".join([f"{i+1}. {u.name} [{u.uid}] ({self.get_group_name(u.gid)})" for i, u in enumerate(users)])
+        return "\n".join([f"{i+1}. {u.first_name} [{u.uid}] ({self.get_group_name(u.gid)})" for i, u in enumerate(users)])
 
     def get_user_data(self, uid: int) -> dict:
         """Get information about a user"""
@@ -175,7 +195,8 @@ class DBManager:
             return None
         return {
             "uid": main.uid,
-            "name": main.name,
+            "first_name": main.first_name,
+            "last_name": main.last_name,
             "gname": self.get_group_name(main.gid),
             "resume": aux.resume,
             "bio": aux.bio,
@@ -192,7 +213,8 @@ class DBManager:
             return None
         return {
             "uid": main.uid,
-            "name": main.name,
+            "first_name": main.first_name,
+            "last_name": main.last_name,
             "gname": self.get_group_name(main.gid),
             "phone": aux.phone,
             "email": aux.email,
@@ -209,38 +231,62 @@ class DBManager:
         resume = self.session.query(UserData).filter(UserData.uid == uid).first().resume
         return resume if resume else "Резюме не установлено"
 
-    def get_coworking_status(self) -> bool:
+    def get_coworking_status(self) -> CoworkingStatus:
         """Get the status of the coworking space"""
         return self.session.query(Coworking).order_by(Coworking.id.desc()).first().status
 
-    def set_coworking_status(self, status: bool, uid: int) -> bool:
+    def get_coworking_delta(self) -> int:
+        """Get the delta of the coworking space"""
+        return self.session.query(Coworking).order_by(Coworking.id.desc()).first().temp_delta
+
+    def set_coworking_status(self, status: CoworkingStatus, uid: int, delta_mins: int = 15) -> CoworkingStatus:
         """Update the status of the coworking space (add new entry to log)"""
-        coworking_status = Coworking(status=status, uid=uid, time=datetime.now())
+        if status == CoworkingStatus.temp_closed:
+            coworking_status = Coworking(status=status, uid=uid, temp_delta=delta_mins, time=datetime.now())
+        else:
+            coworking_status = Coworking(status=status, uid=uid, time=datetime.now())
         self.session.add(coworking_status)
         self.session.commit()
         return status
 
-    def toggle_coworking_status(self, uid: int) -> bool:
-        """Toggle the status of the coworking space (add new entry to log)"""
-        status = not self.get_coworking_status()
+    def toggle_coworking_status(self, uid: int) -> Union[CoworkingStatus, bool]:
+        """
+        Toggle the status of the coworking space (add new entry to log)
+
+        Note: Works only if the last status is either open or closed
+        """
+        status = self.get_coworking_status()
+        if status not in [CoworkingStatus.open, CoworkingStatus.closed]:
+            return False
+        if status == CoworkingStatus.open:
+            return self.set_coworking_status(CoworkingStatus.closed, uid)
         self.set_coworking_status(status, uid)
         return status
+
+    def get_coworking_responsible(self) -> int:
+        """Get the responsible uid for the coworking space key"""
+        return self.session.query(Coworking).order_by(Coworking.id.desc()).first().uid
+
+    def get_coworking_responsible_uname(self) -> str:
+        """Get the responsible uname for the coworking space key"""
+        uid: int = self.session.query(Coworking).order_by(Coworking.id.desc()).first().uid
+        return self.session.query(User).filter(User.uid == uid).first().uname
 
     def get_coworking_log(self) -> List[Coworking]:
         return self.session.query(Coworking).all()
 
     def get_coworking_log_str(self) -> str:
-        return "\n".join([f"{i+1}. {c.time} - {c.uid} - {c.status}" for i, c in enumerate(self.get_coworking_log())])
+        return "\n".join([f"{i+1}. {c.time} - {c.uid} - {'open' if c.status == CoworkingStatus.open else ('event_open' if CoworkingStatus.event_open else ('temp_closed' if CoworkingStatus.temp_closed else 'closed'))}" for i, c in enumerate(self.get_coworking_log())])
 
     # region Coworking notifications
     def change_coworking_notifications(self, cid: int, notify: bool) -> None:
         """Change coworking notifications boolean value for a chat id (cid)"""
         # Check if the chat id is already in the database
-        if self.session.query(SuperChats).filter(SuperChats.cid == cid).first() is None:
+        if self.session.query(ChatSettings).filter(ChatSettings.cid == cid).first() is None:
             # If not, add it
-            self.session.add(SuperChats(cid=cid, notifications_enabled=notify))
+            self.session.add(ChatSettings(cid=cid, notifications_enabled=notify))
             return
-        self.session.query(SuperChats).filter(SuperChats.cid == cid).update({"notifications_enabled": notify})
+        self.session.query(ChatSettings).filter(ChatSettings.cid == cid).update({"notifications_enabled": notify})
         self.session.commit()
 
     def set_coworking_notifications(self, cid: int) -> None:
@@ -260,34 +306,87 @@ class DBManager:
     def get_coworking_notifications(self, cid: int) -> bool:
         """Get coworking notifications boolean value for a chat id (cid)"""
         try:
-            status = self.session.query(SuperChats).filter(SuperChats.cid == cid).first().notifications_enabled
+            status = self.session.query(ChatSettings).filter(ChatSettings.cid == cid).first().notifications_enabled
         except AttributeError:
             status = False
         return status
 
     def get_coworking_notification_chats(self) -> dict:
-        """Get a dict of all chats (present in SuperChats table) and their coworking notification status"""
-        return {i.cid: {"notifications_enabled": i.notifications_enabled} for i in self.session.query(SuperChats).all()}
+        """Get a dict of all chats (present in ChatSettings table) and their coworking notification status"""
+        return {i.cid: {"notifications_enabled": i.notifications_enabled} for i in self.session.query(ChatSettings).all()}
 
     def get_coworking_notification_enabled_count(self) -> int:
         """Get the number of chats with coworking notifications enabled"""
-        return self.session.query(SuperChats).filter(SuperChats.notifications_enabled == True).count()
+        return self.session.query(ChatSettings).filter(ChatSettings.notifications_enabled == True).count()
 
     def get_coworking_notification_chats_str(self) -> str:
-        """Get a structured string containing all chats (present in SuperChats table) and their coworking notification status"""
-        return "\n".join([f"{i+1}. {c.cid} - {c.notifications_enabled}" for i, c in enumerate(self.session.query(SuperChats).all())])
+        """Get a structured string containing all chats (present in ChatSettings table) and their coworking notification status"""
+        return "\n".join([f"{i+1}. {c.cid} - {c.notifications_enabled}" for i, c in enumerate(self.session.query(ChatSettings).all())])
+
+    # region Admin coworking notifications
+    def coworking_notified_admin_closed_during_hours_today(self) -> bool:
+        """Check if admins have been notified about the coworking space being closed during hours today"""
+        closed_status_id = None
+        offset = 0
+        while not closed_status_id:
+            status_id = self.session.query(AdminCoworkingNotification).order_by(AdminCoworkingNotification.id.desc()).offset(offset).first()
+            if status_id is not None:
+                status_id = status_id.status_id
+            else:
+                return False
+            if self.session.query(CoworkingStatus).filter(CoworkingStatus.id == status_id).first().status == CoworkingStatus.open:
+                closed_status_id = status_id
+            offset += 1
+        event = self.session.query(CoworkingStatus).filter(CoworkingStatus.id == closed_status_id).first()
+        # Check if the event status is CoworkingStatus.closed
+        if event.status not in CoworkingStatus.closed:
+            return False
+        # Check if the event happened today (from 00:00 to 23:59)
+        if event.time.date() == datetime.now().date():
+            return True
+        return False
+
+    def coworking_notified_admin_open_after_hours_today(self) -> bool:
+        """Check if admins have been notified about the coworking space being open after hours today"""
+        open_status_id = None
+        offset = 0
+        while not open_status_id:
+            status_id = self.session.query(AdminCoworkingNotification).order_by(AdminCoworkingNotification.id.desc()).offset(offset).first()
+            if status_id is not None:
+                status_id = status_id.status_id
+            else:
+                return False
+            if self.session.query(CoworkingStatus).filter(CoworkingStatus.id == status_id).first().status == CoworkingStatus.open:
+                open_status_id = status_id
+            offset += 1
+        event = self.session.query(CoworkingStatus).filter(CoworkingStatus.id == open_status_id).first()
+        # Check if the event status is CoworkingStatus.open
+        if event.status not in [CoworkingStatus.open, CoworkingStatus.event_open]:
+            return False
+        # Check if the event happened today (from 00:00 to 23:59)
+        if event.time.date() == datetime.now().date():
+            return True
+        return False
+
+    def coworking_opened_today(self) -> bool:
+        """Check if the coworking space has been opened today"""
+        try:
+            return self.session.query(CoworkingStatus).filter(CoworkingStatus.time.date() == datetime.now().date()).filter(CoworkingStatus.status == CoworkingStatus.open).first() is not None
+        except Exception as exc:
+            self.log.error(f"Error while checking if coworking space has been opened today: {exc}")
+    # endregion
     # endregion
 
     # region Answer plaintext user messages
     def change_message_answers_status(self, cid: int, enabled: bool) -> None:
         """Enable answers to user messages for a chat id (cid)"""
         # Check if the chat id is already in the database
-        if self.session.query(SuperChats).filter(SuperChats.cid == cid).first() is None:
-            self.session.add(SuperChats(cid=cid, plaintext_answers_enabled=enabled))
+        if self.session.query(ChatSettings).filter(ChatSettings.cid == cid).first() is None:
+            self.session.add(ChatSettings(cid=cid, plaintext_answers_enabled=enabled))
             self.session.commit()
             return
         # If it is, update the value
-        self.session.query(SuperChats).filter(SuperChats.cid == cid).update({"plaintext_answers_enabled": enabled})
+        self.session.query(ChatSettings).filter(ChatSettings.cid == cid).update({"plaintext_answers_enabled": enabled})
         self.session.commit()
 
     def set_message_answers_status(self, cid: int) -> None:
@@ -298,10 +397,10 @@ class DBManager:
 
     def get_message_answers_status(self, cid: int) -> int:
         # Check if the chat id is already in the database
-        if self.session.query(SuperChats).filter(SuperChats.cid == cid).first() is None:
-            self.session.add(SuperChats(cid=cid))
+        if self.session.query(ChatSettings).filter(ChatSettings.cid == cid).first() is None:
+            self.session.add(ChatSettings(cid=cid))
             self.session.commit()
-        return self.session.query(SuperChats).filter(SuperChats.cid == cid).first().plaintext_answers_enabled
+        return self.session.query(ChatSettings).filter(ChatSettings.cid == cid).first().plaintext_answers_enabled
 
     def toggle_message_answers_status(self, cid: int) -> bool:
         if self.get_message_answers_status(cid):

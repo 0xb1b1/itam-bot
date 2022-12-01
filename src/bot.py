@@ -32,6 +32,7 @@ from modules import replies                 # Telegram bot information output
 from modules import coworking               # Coworking space information
 from modules import replies                 # Telegram bot information output
 from modules.db import DBManager            # Operations with sqlite db
+from modules.models import CoworkingStatus  # Coworking status model
 # endregion
 # region Modules
 #from modules.admin.main import Admin
@@ -82,7 +83,7 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
 
 # region Database
-db = DBManager()
+db = DBManager(log)
 
 # region Modules
 # Coworking status
@@ -106,6 +107,10 @@ class AdminBroadcast(StatesGroup):
     scope = State()
     confirm = State()
 
+class AdminCoworkingTempCloseFlow(StatesGroup):
+    delta = State()
+    notification = State()
+    confirm = State()
 # endregion
 
 # region Multiuse functions
@@ -131,15 +136,19 @@ def get_main_keyboard(message: types.Message) -> InlineKeyboardMarkup:
         mainMenu.add(KeyboardButton(btntext.ADMIN_BTN))
     return ReplyKeyboardRemove() if chat_is_group(message) else mainMenu
 
-async def send_coworking_notifications(is_open: bool):
+async def send_coworking_notifications(is_open: bool, delta_mins: int = 0) -> None:
     cids = db.get_coworking_notification_chats()
     for cid in cids:
-        if not cids[cid]["enabled"]:
+        if not cids[cid]["notifications_enabled"]:
             continue
-        await bot.send_message(cid, replies.coworking_status_changed(is_open))
+        await bot.send_message(cid, replies.coworking_status_changed(is_open,
+                                                                     responsible_uname=db.get_coworking_responsible(),
+                                                                     delta_mins=delta_mins))
 
-async def broadcast(message: str, scope: str):
-    if scope == 'all':
+async def broadcast(message: str, scope: str, custom_scope: list = None) -> None:
+    if custom_scope:
+        cids = custom_scope
+    elif scope == 'all':
         cids = db.get_all_chats()
     elif scope == 'admins':
         cids = db.get_admin_chats()
@@ -147,11 +156,12 @@ async def broadcast(message: str, scope: str):
         cids = db.get_user_chats()
     else:
         raise ValueError("Invalid scope")
+    log.debug(f"Broadcasting message to {len(cids)} chats: {cids}")
     for cid in cids:
         try:
             await bot.send_message(cid, message)
-        except Exception as e:
-            log.error(f"Failed to send message to chat {cid}: {e}")
+        except Exception as exc:
+            log.debug(f"Failed to send broadcast message to chat {cid}: {exc}")
 
 async def is_group_admin(message: types.Message) -> bool:
     # Check if chat is a group
@@ -170,14 +180,57 @@ def conv_call_to_msg(call: Union[types.CallbackQuery, types.Message]) -> types.M
     return call.message
 # endregion
 
-# region BotReplies
+# region Scheduled tasks
+async def coworking_status_checker(open_time: datetime, close_time: datetime, sleep: int = 20, dry_run: bool = False):
+    """Check if the coworking space is closed after open_time and open after close_time"""
+    try:
+        # Set open_time and close_time to current date
+        current_time = datetime.now()
+        open_time = open_time.replace(year=current_time.year, month=current_time.month, day=current_time.day)
+        close_time = close_time.replace(year=current_time.year, month=current_time.month, day=current_time.day)
+        if not dry_run:
+            admins = db.get_admin_chats()
+        else:
+            admins = [os.getenv("DEFAULT_ADMIN_UID")]
+        # Check if the coworking space is closed after open_time
+        if not current_time > open_time and coworking.get_status() == CoworkingStatus.closed:
+            if not coworking.opened_today() and not coworking.notified_closed_during_hours_today():
+                # Send broadcast to admins
+                log.debug("Sending broadcast to admins about coworking space being closed during hours")
+                await broadcast(replies.coworking_closed_during_hours(), custom_scope=admins)
+            else:
+                # Create debug log message
+                # TODO: Remove when debug is done
+                log.debug(f"NOT sending broadcast to admins (closed after open time); {coworking.opened_today()=}, {coworking.notified_closed_during_hours_today()=}")
+        elif current_time > close_time and coworking.get_status() == CoworkingStatus.open:
+            if not coworking.notified_open_after_hours_today():
+                # Send broadcast to admins
+                log.debug("Sending broadcast to admins about coworking space being open after hours")
+                await broadcast(replies.coworking_open_after_hours(), custom_scope=admins)
+            else:
+                log.debug(f"NOT sending broadcast to admins (closed after open time); {coworking.notified_closed_during_hours_today()=}")
+        else:
+            # Create debug log message
+            # TODO: Remove when debug is done
+            log.debug(f"NOT sending broadcast to admins (not closed after open time or not open after close time); closed after open time ({coworking.get_status() == CoworkingStatus.closed}, {current_time > open_time}), open after closed time ({coworking.get_status() == CoworkingStatus.open}, {current_time > close_time})")
+        # Log the datetime variables
+        log.debug(f"[coworking_status_checker] open_time: {open_time}, close_time: {close_time}, current_time: {current_time}, closed_after_open_time: {datetime.now() > open_time}, open_after_close_time: {datetime.now() > close_time}")
+        # Send all variables to debug
+        log.debug(f"[coworking_status_checker] {open_time=}, {close_time=}, {current_time=}, {coworking.get_status()=}, {coworking.opened_today()=}, {coworking.notified_closed_during_hours_today()=}, {coworking.notified_open_after_hours_today()=}")
+        # Sleep for the specified amount of time before running again
+        await asyncio.sleep(sleep)
+    except Exception as exc:
+        log.error(f"Error in coworking_status_checker: {exc}")
+# endregion
+
+# region Bot replies
 # Command message handling
 @dp.message_handler(debug_dec, CommandStart())
 async def send_welcome(message: types.Message) -> None:
     """Send welcome message and init user's record in DB"""
     await message.reply(replies.welcome_message(message.from_user.first_name),
                         reply_markup=get_main_keyboard(message))
-    db.add_regular_user(message.from_user.id, message.from_user.first_name)
+    db.add_regular_user(message.from_user.id, message.from_user.username, message.from_user.first_name, message.from_user.last_name)
 
 # region Cancel all states
 @dp.callback_query_handler(lambda c: c.data == 'cancel', state='*')
@@ -250,9 +303,10 @@ async def notify_status(message: types.Message) -> None:
 @dp.message_handler(debug_dec, admin_only, commands=['admin'])
 async def admin_panel(message: types.Message) -> None:
     """Send admin panel"""
+    cw_binary_status = coworking.get_status() in [CoworkingStatus.open, CoworkingStatus.event_open]
     inlAdminChangeGroupBtn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP, callback_data='change_user_group')
     markup = InlineKeyboardMarkup().add(inlAdminChangeGroupBtn)
-    markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING if coworking.get_status() else btntext.OPEN_COWORKING, callback_data='toggle_coworking_status'))
+    markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING if cw_binary_status else btntext.OPEN_COWORKING, callback_data='toggle_coworking_status'))
     await message.reply(replies.admin_panel(coworking.get_status()), reply_markup=markup)
     log.debug(f"User {message.from_user.id} opened the admin panel")
 
@@ -261,35 +315,102 @@ async def admin_panel(message: types.Message) -> None:
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_toggle'])
 async def toggle_coworking_status(message: types.Message) -> None:
     """Toggle coworking status"""
-    status = coworking.toggle_status(message.from_user.id)
-    status_str = f"Коворкинг теперь {'открыт' if status else 'закрыт'}"
+    if coworking.get_status() not in [CoworkingStatus.open, CoworkingStatus.closed]:
+        await conv_call_to_msg(message).reply(replies.coworking_status_not_binary())
+    status: CoworkingStatus = coworking.toggle_status(message.from_user.id)
+    status_str = f"Коворкинг теперь {'открыт' if status == CoworkingStatus.open else 'закрыт'}"
     await send_coworking_notifications(status)
-    if isinstance(message, types.CallbackQuery):
-        await message.message.reply(status_str)
-    await message.reply(status_str)
+    await conv_call_to_msg(message).reply(status_str)
     log.info(f"Coworking {'opened' if status else 'closed'} by {message.from_user.id}")
 
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_open'])
 async def coworking_open(message: types.Message) -> None:
     """Set coworking status to open"""
-    if coworking.get_status():
+    if coworking.get_status() == CoworkingStatus.open:
         await message.reply("Коворкинг уже открыт")
         return
     coworking.open(message.from_user.id)
-    await send_coworking_notifications(True)
+    await send_coworking_notifications(CoworkingStatus.open)
     await message.reply("Коворкинг теперь открыт")
     log.info(f"Coworking opened by {message.from_user.id}")
 
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_close'])
 async def coworking_close(message: types.Message) -> None:
     """Set coworking status to closed"""
-    if not coworking.get_status():
+    if coworking.get_status() == CoworkingStatus.closed:
         await message.reply("Коворкинг уже закрыт")
         return
     coworking.close(message.from_user.id)
-    await send_coworking_notifications(False)
+    await send_coworking_notifications(CoworkingStatus.closed)
     await message.reply("Коворкинг теперь закрыт")
     log.info(f"Coworking closed by {message.from_user.id}")
+
+@dp.message_handler(debug_dec, admin_only, commands=['coworking_temp_close'])
+async def coworking_temp_close_stage0(message: types.Message, state: FSMContext) -> None:
+    """Set coworking status to temporarily closed"""
+    if coworking.get_status() == CoworkingStatus.temp_closed:
+        await message.reply(f"Коворкинг уже временно закрыт\n\n{replies.cancel_action()}")
+        return
+    # Set AdminCoworkingTempCloseFlow state
+    await state.set_state(AdminCoworkingTempCloseFlow.delta.state)
+    # coworking.temp_close(message.from_user.id)
+    # await send_coworking_notifications(CoworkingStatus.closed)
+    # await message.reply("Коворкинг теперь временно закрыт")
+    # log.info(f"Coworking temporarily closed by {message.from_user.id}")
+    await message.reply(f"На какое время закрыть коворкинг? (в минутах; можно ввести любое целое число)\n\n{replies.cancel_action()}",
+                        reply_markup=nav.coworkingTempCloseDeltaMenu)
+
+@dp.message_handler(debug_dec, admin_only, state=AdminCoworkingTempCloseFlow.delta.state)
+async def coworking_temp_close_stage1(message: types.Message, state: FSMContext) -> None:
+    """Set coworking status to temporarily closed"""
+    if coworking.get_status() == CoworkingStatus.temp_closed:
+        await message.reply(f"Коворкинг уже временно закрыт\n\n{replies.cancel_action()}")
+        return
+    # Get delta
+    try:
+        delta = int(message.text)
+    except ValueError:
+        await message.reply(f"Неверный формат! Попробуй еще раз\n\n{replies.cancel_action()}")
+        return
+    # Save delta
+    await state.update_data(delta=delta)
+    # Set AdminCoworkingTempCloseFlow state
+    await state.set_state(AdminCoworkingTempCloseFlow.confirm.state)
+    # Send message
+    await message.reply("Подтвердите введенные данные", reply_markup=nav.confirmMenu)
+
+@dp.message_handler(debug_dec, admin_only, state=AdminCoworkingTempCloseFlow.confirm.state)
+async def coworking_temp_close_stage2(message: types.Message, state: FSMContext) -> None:
+    """Set coworking status to temporarily closed"""
+    if coworking.get_status() == CoworkingStatus.temp_closed:
+        await message.reply(f"Коворкинг уже временно закрыт\n\n{replies.cancel_action()}")
+        return
+    # Check confirmation
+    if message.text != btntext.CONFIRM:
+        await message.reply("Действие отменено")
+        await state.finish()
+        return
+    # Get delta
+    data = await state.get_data()
+    delta: int = data['delta']
+    # Temporarily close coworking
+    coworking.temp_close(message.from_user.id, delta_mins=delta)
+    await send_coworking_notifications(CoworkingStatus.temp_closed, delta_mins=delta)
+    await message.reply("Коворкинг теперь временно закрыт",
+                        reply_markup=get_main_keyboard())
+    log.info(f"Coworking temporarily closed by {message.from_user.id} for {delta} minutes")
+    await state.finish()
+
+@dp.message_handler(debug_dec, admin_only, commands=['coworking_event_open'])
+async def coworking_event_open(message: types.Message) -> None:
+    """Set coworking status to opened for an event"""
+    if coworking.get_status() == CoworkingStatus.event_open:
+        await message.reply("Коворкинг уже открыт (с предупреждением о проведении мероприятия)")
+        return
+    coworking.close(message.from_user.id)
+    await send_coworking_notifications(CoworkingStatus.closed)
+    await message.reply("Коворкинг теперь открыт (с предупреждением о проведении мероприятия)")
+    log.info(f"Coworking opened for an event by {message.from_user.id}")
 
 @dp.message_handler(debug_dec, admin_only, commands=['get_coworking_status_log'])
 async def get_coworking_status_log(message: types.Message) -> None:
@@ -302,8 +423,9 @@ async def update_admin_kb(message: types.Message) -> None:
     admins = db.get_admin_chats()
     for admin in admins:
         bot.send_message(admin, "Клавиатура администратора обновлена", reply_markup=get_main_keyboard(message))
-    log.info(f"Admin keyboard updated by {message.from_user.id} for {len(admins)} admins")
-    await message.reply("Admin menu updated")
+        log.debug(f"Admin keyboard updated for {admin} by {message.from_user.id}")
+    log.info(f"Admin keyboard updated by {message.from_user.id} for {len(admins)} administrators")
+    await message.reply(replies.menu_updated_reply(len(admins), admins_only=True))
 # endregion
 
 # region Broadcast
@@ -322,7 +444,7 @@ async def admin_broadcast_stage1(message: types.Message, state: FSMContext) -> N
 async def admin_broadcast_stage2(message: types.Message, state: FSMContext) -> None:
     await state.update_data(scope=message.text)
     state_data = await state.get_data()
-    await message.reply(f"Подтвердите рассылку\nТекст рассылки:\n\"\"\"{state_data['message']}\"\"\"\n\n{replies.cancel_action()}", reply_markup=nav.adminBroadcastConfirmMenu)
+    await message.reply(f"Подтвердите рассылку\nТекст рассылки:\n\"\"\"{state_data['message']}\"\"\"\n\n{replies.cancel_action()}", reply_markup=nav.confirmMenu)
     await state.set_state(AdminBroadcast.confirm.state)
 
 @dp.message_handler(debug_dec, admin_only, state=AdminBroadcast.confirm.state)
@@ -422,7 +544,7 @@ async def edit_profile(call: types.CallbackQuery) -> None:
     await call.message.reply("Что изменим?", reply_markup=nav.inlCancelMenu)
 # endregion
 
-# region Plaintext answers in groups (chats/superchats)
+# region Plaintext answers in groups (chats/soperchats)
 @dp.message_handler(debug_dec, groups_only, commands=['plaintext'])
 async def plaintext_answers_toggle(message: types.Message):
     """Toggle plaintext answers boolean in database"""
@@ -431,13 +553,13 @@ async def plaintext_answers_toggle(message: types.Message):
         await message.reply(replies.permission_denied())
         return
     status = db.toggle_message_answers_status(message.chat.id)
-    await message.reply(f"Ответы на обычные сообщения теперь {'включены 🟢' if status else 'выключены 🔴'}")
+    await message.reply(replies.plaintext_answers_reply(status, toggled=True))
 
 @dp.message_handler(debug_dec, groups_only, commands=['plaintext_status'])
 async def plaintext_answers_status(message: types.Message):
     """Get plaintext answers boolean status"""
     status = db.get_message_answers_status(message.chat.id)
-    await message.reply(f"Ответы на обычные сообщения {'включены 🟢' if status else 'выключены 🔴'}")
+    await message.reply(replies.plaintext_answers_reply(status, toggled=False))
 # endregion
 
 # region Fix keyboard !TODO: FIX
@@ -464,60 +586,89 @@ async def club_info(call: types.CallbackQuery) -> None:
     """Club info"""
     club = call.data.split('_')[0]
     # Edit previous bot message
-    if club == 'ctf':
-        await call.message.edit_text(replies.ctf_club_info(),
-                                     reply_markup=nav.inlClubsMenu)
-    elif club == 'hackathon':
-        await call.message.edit_text(replies.hackathon_club_info(),
-                                     reply_markup=nav.inlClubsMenu)
-    elif club == 'design':
-        await call.message.edit_text(replies.design_club_info(),
-                                     reply_markup=nav.inlClubsMenu)
-    elif club == 'gamedev':
-        await call.message.edit_text(replies.gamedev_club_info(),
-                                     reply_markup=nav.inlClubsMenu)
+    try:
+        if club == 'ctf':
+            await call.message.edit_text(replies.ctf_club_info(),
+                                        reply_markup=nav.inlClubsMenu,
+                                        parse_mode=ParseMode.MARKDOWN)
+        elif club == 'hackathon':
+            await call.message.edit_text(replies.hackathon_club_info(),
+                                        reply_markup=nav.inlClubsMenu,
+                                        parse_mode=ParseMode.MARKDOWN)
+        elif club == 'design':
+            await call.message.edit_text(replies.design_club_info(),
+                                        reply_markup=nav.inlClubsMenu,
+                                        parse_mode=ParseMode.MARKDOWN)
+        elif club == 'gamedev':
+            await call.message.edit_text(replies.gamedev_club_info(),
+                                        reply_markup=nav.inlClubsMenu,
+                                        parse_mode=ParseMode.MARKDOWN)
+    except exceptions.MessageNotModified:
+        log.debug(f"User {call.from_user.id} tried to request the same club info ({club})")
 # endregion
 
 # Normal messages
 @dp.message_handler()
 async def answer(message: types.Message) -> None:
     """Answer to random messages and messages from buttons"""
+    if not db.is_uname_set(message.from_user.id):  # TODO: Measure performance hit
+        if not chat_is_group(message):
+            if db.does_user_exist(message.from_user.id):
+                db.set_uname(message.from_user.id, message.from_user.username)
+            else:
+                message.reply(replies.please_click_start())
     # Menus
     text_lower = message.text.lower()
     executed = False
     try:
         if message.text == btntext.COWORKING_STATUS:
             executed = True
-            await message.reply(replies.coworking_status(coworking.get_status()),
-                                reply_markup=get_main_keyboard(message))
+            try:
+                status = coworking.get_status()
+                if status == CoworkingStatus.temp_closed:
+                    await message.reply(replies.coworking_status_reply(status, responsible_uname=db.get_coworking_responsible_uname(), delta_mins=coworking.get_delta()),
+                                        reply_markup=get_main_keyboard(message))
+                else:
+                    await message.reply(replies.coworking_status_reply(status, responsible_uname=db.get_coworking_responsible_uname()),
+                                        reply_markup=get_main_keyboard(message))
+            except Exception as e:
+                log.error(f"Error while getting coworking status: {e}")
         elif message.text == btntext.PROFILE_INFO:
             executed = True
             if message.chat.type == 'group':
                 await message.reply(replies.profile_info_only_in_pm())
                 return
             await bot.send_message(message.from_user.id,
-                                replies.profile_info(db.get_user_data_short(message.from_user.id)),
-                                reply_markup=nav.inlProfileMenu)
+                                   replies.profile_info(db.get_user_data_short(message.from_user.id)),
+                                   reply_markup=nav.inlProfileMenu)
         elif message.text == btntext.HELP_ME:
-            if message.chat.id != message.from_user.id:
-                return
             executed = True
-            is_admin = db.is_admin(message.chat.id)  # Checking chat ID to avoid showing admin commands in groups
+            if message.chat.id != message.from_user.id:  # Avoid sending the help menu in groups
+                return
+            is_admin = db.is_admin(message.chat.id)
             are_notifications_on = db.get_coworking_notifications(message.chat.id)
             inlHelpMenu = InlineKeyboardMarkup(resize_keyboard=True)
             inlHelpMenu.add(InlineKeyboardButton(f"{'Выключить' if are_notifications_on else 'Включить'} уведомления о статусе коворкинга (сейчас {'включены 🟢' if are_notifications_on else 'выключены 🔴'})",
-                                                callback_data='toggle_coworking_notifications'))
+                                                 callback_data='toggle_coworking_notifications'))
+            coworking_status: CoworkingStatus = coworking.get_status()
             if is_admin:
-                status = coworking.get_status()
-                inlHelpMenu.add(InlineKeyboardButton(f"{'Закрыть' if status else 'Открыть'} коворкинг (сейчас {'открыт 🟢' if status else 'закрыт 🔴'})",
-                                callback_data='toggle_coworking_status'))
+                status: CoworkingStatus = coworking.get_status()
+                if coworking_status in [CoworkingStatus.open, CoworkingStatus.closed]:
+                    inlHelpMenu.add(InlineKeyboardButton(replies.switch_coworking_status_inline_binary_action(status),
+                                    callback_data='toggle_coworking_status'))
+                elif coworking_status in [CoworkingStatus.event_open, CoworkingStatus.temp_closed]:
+                    inlHelpMenu.add(InlineKeyboardButton(replies.switch_coworking_from_nonbinary_action(status, True),
+                                                         callback_data='open_coworking'))
+                    inlHelpMenu.add(InlineKeyboardButton(replies.switch_coworking_from_nonbinary_action(status, False),
+                                                         callback_data='close_coworking'))
+                #! else:
             await message.reply(replies.help_message(),
                                 reply_markup=inlHelpMenu)
     finally:
         if executed:
             return
 
-    # Plaintext message answers — checking db value for SuperChats.message_answers_enabled
+    # Plaintext message answers — checking db value for ChatSettings.message_answers_enabled
     if chat_is_group(message):
         if not db.get_message_answers_status(message.chat.id):
             log.debug(f"Received a message in a group, but plaintext_message_answers is False for {message.chat.id}")
@@ -533,7 +684,11 @@ async def answer(message: types.Message) -> None:
 
 # region StartUp
 def run() -> None:
-    log.info('Starting...')
+    loop = asyncio.get_event_loop()
+    # loop.create_task(coworking_status_checker(datetime.strptime('2021-09-01 02:00:00', '%Y-%m-%d %H:%M:%S'),
+    #                                           datetime.strptime('2021-09-01 17:30:00', '%Y-%m-%d %H:%M:%S'),
+    #                                           sleep=10,
+    #                                           dry_run=True))
     log.info('Starting AIOgram...')
     executor.start_polling(dp, skip_updates=True)
     log.info('AIOgram stopped successfully')

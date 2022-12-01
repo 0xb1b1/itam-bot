@@ -32,10 +32,10 @@ adminBroadcastScopeMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(bcScopeU
                                                                         bcScopeAdmins,
                                                                         bcScopeEveryone)
 
-broadcastConfirmBtn = KeyboardButton(btn.CONFIRM)
-broadcastCancelBtn = KeyboardButton(btn.CANCEL)
-adminBroadcastConfirmMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(broadcastConfirmBtn,
-                                                                     broadcastCancelBtn)
+confirmBtn = KeyboardButton(btn.CONFIRM)
+cancelBtn = KeyboardButton(btn.CANCEL)
+confirmMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(confirmBtn,
+                                                            cancelBtn)
 
 inlCTFClubBtn = InlineKeyboardButton(btn.CTF_CLUB, callback_data='ctf_club_info')
 inlDesignClubBtn = InlineKeyboardButton(btn.DESIGN_CLUB, callback_data='design_club_info')
@@ -45,3 +45,12 @@ inlClubsMenu = InlineKeyboardMarkup().add(inlCTFClubBtn,
                                           inlDesignClubBtn,
                                           inlHackathonClubBtn,
                                           inlGameDevClubBtn)
+
+cwTempClose15Btn = KeyboardButton("15")
+cwTempClose20Btn = KeyboardButton("20")
+cwTempClose30Btn = KeyboardButton("30")
+cwTempClose45Btn = KeyboardButton("45")
+coworkingTempCloseDeltaMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(cwTempClose15Btn,
+                                                                            cwTempClose20Btn,
+                                                                            cwTempClose30Btn,
+                                                                            cwTempClose45Btn)
