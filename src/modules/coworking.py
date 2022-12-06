@@ -15,9 +15,6 @@ class Manager:
     def get_delta(self) -> int:
         return self.db.get_coworking_delta()
 
-    def toggle_status(self, uid: int) -> CoworkingStatus:
-        return self.db.toggle_coworking_status(uid)
-
     def open(self, uid: int) -> CoworkingStatus:
         return self.db.set_coworking_status(CoworkingStatus.open, uid)
 
@@ -50,3 +47,6 @@ class Manager:
 
     def is_responsible(self, uid: int) -> bool:
         return self.db.get_coworking_responsible() == uid
+
+    def get_responsible_uname(self) -> str:
+        return self.db.get_coworking_responsible_uname()

@@ -7,12 +7,14 @@ from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
+
 # region Enums
 class GroupType(enum.IntEnum):
     """Group types"""
     itam_hq = 1
     club_admins = 2
     users = 3
+
 
 class CoworkingStatus(enum.IntEnum):
     """Coworking statuses"""
@@ -21,6 +23,7 @@ class CoworkingStatus(enum.IntEnum):
     temp_closed = 3
     closed = 4
 # endregion
+
 
 # region Custom column types
 class IntEnum(TypeDecorator):
@@ -45,6 +48,7 @@ class IntEnum(TypeDecorator):
         return self._enumtype(value)
 # endregion
 
+
 class User(Base):
     """Admin model for SQLAlchemy"""
     __tablename__ = 'users'
@@ -56,6 +60,7 @@ class User(Base):
     last_name = Column(Text, default=None)
     gid = Column(IntEnum(GroupType), default=GroupType.users)
 
+
 class Group(Base):
     """Group model for SQLAlchemy"""
     __tablename__ = 'groups'
@@ -64,6 +69,7 @@ class Group(Base):
                  autoincrement=False)
     name = Column(Text)
     gtype = Column(IntEnum(GroupType))
+
 
 class Coworking(Base):
     """Coworking status model for SQLAlchemy"""
@@ -82,6 +88,7 @@ class AdminCoworkingNotification(Base):
                 primary_key=True)
     status_id = Column(BigInteger)
 
+
 class UserData(Base):
     """User data model for SQLAlchemy"""
     __tablename__ = 'user_data'
@@ -91,6 +98,7 @@ class UserData(Base):
     birthday = Column(Date)
     phone = Column(Text)
     email = Column(Text)
+
 
 class ChatSettings(Base):
     """ChatSettings model for SQLAlchemy"""

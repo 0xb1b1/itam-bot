@@ -41,10 +41,12 @@ inlCTFClubBtn = InlineKeyboardButton(btn.CTF_CLUB, callback_data='ctf_club_info'
 inlDesignClubBtn = InlineKeyboardButton(btn.DESIGN_CLUB, callback_data='design_club_info')
 inlGameDevClubBtn = InlineKeyboardButton(btn.GAMEDEV_CLUB, callback_data='gamedev_club_info')
 inlHackathonClubBtn = InlineKeyboardButton(btn.HACKATHON_CLUB, callback_data='hackathon_club_info')
+inlRoboticsClubBtn = InlineKeyboardButton(btn.ROBOTICS_CLUB, callback_data='robotics_club_info')
 inlClubsMenu = InlineKeyboardMarkup().add(inlCTFClubBtn,
                                           inlDesignClubBtn,
                                           inlHackathonClubBtn,
-                                          inlGameDevClubBtn)
+                                          inlGameDevClubBtn,
+                                          inlRoboticsClubBtn)
 
 cwTempClose15Btn = KeyboardButton("15")
 cwTempClose20Btn = KeyboardButton("20")

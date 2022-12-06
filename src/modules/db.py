@@ -185,7 +185,7 @@ class DBManager:
     def get_users_verbose_str(self) -> str:
         """Get a string list of users and their groups"""
         users = self.session.query(User).all()
-        return "\n".join([f"{i+1}. {u.first_name} [{u.uid}] ({self.get_group_name(u.gid)})" for i, u in enumerate(users)])
+        return "\n".join([f"{i+1}. [{u.first_name} {u.last_name if u.last_name else ''}] @{u.uname if u.uname else '—'} [{u.uid}] ({self.get_group_name(u.gid)})" for i, u in enumerate(users)])
 
     def get_user_data(self, uid: int) -> dict:
         """Get information about a user"""
@@ -249,20 +249,6 @@ class DBManager:
         self.session.commit()
         return status
 
-    def toggle_coworking_status(self, uid: int) -> Union[CoworkingStatus, bool]:
-        """
-        Toggle the status of the coworking space (add new entry to log)
-
-        Note: Works only if the last status is either open or closed
-        """
-        status = self.get_coworking_status()
-        if status not in [CoworkingStatus.open, CoworkingStatus.closed]:
-            return False
-        if status == CoworkingStatus.open:
-            return self.set_coworking_status(CoworkingStatus.closed, uid)
-        self.set_coworking_status(status, uid)
-        return status
-
     def get_coworking_responsible(self) -> int:
         """Get the responsible uid for the coworking space key"""
         return self.session.query(Coworking).order_by(Coworking.id.desc()).first().uid
@@ -274,8 +260,9 @@ class DBManager:
 
     def coworking_status_set_uid_responsible(self, uid: int) -> bool:
         """Set the responsible uid for the coworking space key"""
-        coworking = self.session.query(Coworking).order_by(Coworking.id.desc()).first()
-        coworking.uid = uid
+        coworking_status = self.session.query(Coworking).order_by(Coworking.id.desc()).first().status
+        # Create new entry
+        self.session.add(Coworking(status=coworking_status, uid=uid, time=datetime.now()))
         self.session.commit()
         return True
 
@@ -455,3 +442,11 @@ class DBManager:
             "coworking_log_count": len(self.get_coworking_log()),
             "coworking_notifications": self.get_coworking_notification_enabled_count()
         }
+
+    def get_superadmin_uids(self) -> list[int]:
+        """Get a list of all superadmins"""
+        return [int(i) for i in getenv("SUPERADMIN_UIDS").split(":")]
+
+    def is_superadmin(self, uid: int) -> bool:
+        """Check if a user is a superadmin"""
+        return uid in self.get_superadmin_uids()
