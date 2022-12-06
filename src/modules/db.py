@@ -65,7 +65,7 @@ class DBManager:
             self.add_group(gid=GroupType.itam_hq, name='ITAM Headquarters', gtype=GroupType.itam_hq)
         # Add the default admin from ENV if they don't exist
         if not self.session.query(User).filter(User.uid == getenv('DEFAULT_ADMIN_UID')).first():
-            self.add_admin(uid=int(getenv('DEFAULT_ADMIN_UID')), name=getenv('DEFAULT_ADMIN_USERNAME'), gid=GroupType.itam_hq)
+            self.add_admin(uid=int(getenv('DEFAULT_ADMIN_UID')), uname=getenv('DEFAULT_ADMIN_USERNAME'), first_name=getenv('DEFAULT_ADMIN_FNAME'), gid=GroupType.itam_hq)
         self.__update_groups()
         # Create the first coworking status if it doesn't exist
         if not self.session.query(Coworking).first():
