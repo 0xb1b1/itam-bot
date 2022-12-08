@@ -69,7 +69,7 @@ class DBManager:
         self.__update_groups()
         # Create the first coworking status if it doesn't exist
         if not self.session.query(Coworking).first():
-            self.set_coworking_status(False, getenv('DEFAULT_ADMIN_UID'))
+            self.set_coworking_status(CoworkingStatus.closed, getenv('DEFAULT_ADMIN_UID'))
 
     def __update_groups(self) -> None:
         """Create groups from the models in the database"""
@@ -93,9 +93,9 @@ class DBManager:
         self.session.add(userdata)
         self.session.commit()
 
-    def add_admin(self, uid: int, first_name: str, last_name: str, gid: int):
+    def add_admin(self, uid: int, uname: str, first_name: str, gid: int):
         """Add an admin to the database"""
-        admin = User(uid=uid, first_name=first_name, last_name=last_name, gid=gid)
+        admin = User(uid=uid, uname=uname, first_name=first_name, gid=gid)
         self.session.add(admin)
         self.session.commit()
         userdata = UserData(uid=uid)
