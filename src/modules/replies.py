@@ -14,10 +14,6 @@ def welcome_message(uname) -> str:
 
 Поехали!"""
 
-def coworking_status(is_open: bool) -> str:
-    status_str = "открыт" if is_open else "закрыт"
-    return f"🔑{'🟢' if is_open else  '🔴'} Коворкинг сейчас {status_str}"
-
 def permission_denied() -> str:
     return "❌ У вас недостаточно прав для выполнения этой команды"
 
@@ -108,8 +104,8 @@ def coworking_status_changed(status: CoworkingStatus, responsible_uname: str = "
 def coworking_status_not_binary() -> str:
     return "❌ Невозможно выполнить действие: коворкинг не в открытом или закрытом состоянии"
 
-def plaintext_answers_reply(status: bool, toggled: bool = False) -> str:
-    return f"Ответы на обычные сообщения{' теперь' if toggled else ''} {'включены 🟢' if status else 'выключены 🔴'}"
+def plaintext_answers_reply(status: bool, toggled: bool = False, chat_id: int = None, admin_uname: str = None) -> str:
+    return f"Ответы на обычные сообщения{' теперь' if toggled else ''} {'включены 🟢' if status else 'выключены 🔴'}{f' для чата {str(chat_id)}' if chat_id else ''}{f' администратором @{admin_uname}' if admin_uname else ''}"
 
 def menu_updated_reply(user_count: int, admins_only: bool = False) -> str:
     return f"Меню обновлено для {user_count} {'пользователей' if not admins_only else 'администраторов'}"
@@ -117,13 +113,18 @@ def menu_updated_reply(user_count: int, admins_only: bool = False) -> str:
 def profile_info_only_in_pm() -> str:
     return "🛂‼️ Эту команду можно использовать только в личных сообщениях"
 
+def coworking_status_only_in_pm() -> str:
+    return "🔑‼️ Эту команду можно использовать только в личных сообщениях"
+
 def please_click_start() -> str:
     return "🛂‼️ Пожалуйста, нажмите сюда: /start"
 
 def help_message() -> str:
     return """Список команд:
 
-/notify — 🔔 включить/выключить уведомления о статусе коворкинга"""
+/notify — 🔔 включить/выключить уведомления о статусе коворкинга
+
+[Сайт проекта](https://go.itatmisis.ru)"""
 
 def cancel_action() -> str:
     return "/cancel — ❌ Отменить действие"
@@ -165,11 +166,11 @@ def coworking_control(cw_status, responsible_uname) -> str:
 Сейчас коворкинг {cw_icon} {cw_status}
 
 🔑 Команды (⚠️ Без подтверждения)
-— /coworking_toggle — 🔑🟢🔴 Переключить статус коворкинга)
-— /coworking_open — 🔑🟢 Открыть коворкинг
-— /coworking_close — 🔑🔴 Закрыть коворкинг
-— /coworking_temp_close — 🔑🔴⚠️ Временно закрыть коворкинг
-— /coworking_event_open — 🔑🟢⚠️ Открыть коворкинг на мероприятие
+— /coworking_toggle — 🟢🔴 Переключить статус коворкинга)
+— /coworking_open — 🟢 Открыть коворкинг
+— /coworking_close — 🔴 Закрыть коворкинг
+— /coworking_temp_close — 🔴⚠️ Временно закрыть коворкинг
+— /coworking_event_open — 🟢⚠️ Открыть коворкинг на мероприятие
 — /trim_coworking_status_log — 🧹 Обрезать лог статусов коворкинга"""
 
 def club_info_general() -> str:
@@ -239,6 +240,14 @@ def robotics_club_info() -> str:
 (Crickets' chirp)
 """
 
+def ml_club_info() -> str:
+    return """🤖🧑‍💻 MISIS AI Lab
+
+Прогрессивное молодое сообщество студентов, где исследуют и создают модели нейросетей, обсуждают вопросы машинного обучения, обмениваются интересными наборами данных и организуют свои kaggle-like соревнования.
+
+[⚡️ Руководитель](https://t.me/arsmathprog)
+[💬 Чат](https://t.me/+vEZLTQ9wWT44OTRi)"""
+
 def coworking_closed_during_hours() -> str:
     return """🚧 Коворкинг закрыт в рабочее время!"""
 
@@ -261,3 +270,9 @@ def credits() -> str:
 
 def user_group_changed() -> str:
     return """👥 Группа пользователя изменена"""
+
+def broadcast_successful() -> str:
+    return """📢 Рассылка успешна"""
+
+def toggle_coworking_notifications(curr_status: bool) -> str:
+    return f"[{'🟢' if curr_status else '🔴'}] {'Выключить' if curr_status else 'Включить'} уведомления"

@@ -38,11 +38,12 @@ EVENT_OPEN_COWORKING = "🔑🟡 Открыть коворкинг на меро
 TEMP_CLOSE_COWORKING = "🔑🟠 Временно закрыть коворкинг"
 
 # Club buttons
-CTF_CLUB = "CTF клуб"
-DESIGN_CLUB = "Дизайн клуб"
-GAMEDEV_CLUB = "GameDev клуб"
-HACKATHON_CLUB = "Хакатон клуб"
-ROBOTICS_CLUB = "Robotics клуб"
+CTF_CLUB = "CTF"
+DESIGN_CLUB = "Дизайн"
+GAMEDEV_CLUB = "GameDev"
+HACKATHON_CLUB = "Хакатон"
+ROBOTICS_CLUB = "Robotics"
+ML_CLUB = "ML"
 
 # Other buttons
 CREDITS = "Об авторах"

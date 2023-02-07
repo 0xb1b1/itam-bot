@@ -3,7 +3,7 @@ version: "3"
 services:
   db:
     container_name: itam-bot-psql
-    image: postgres
+    image: postgres:14
     restart: always
     environment:
       POSTGRES_USER: ${PG_USER}

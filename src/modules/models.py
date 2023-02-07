@@ -77,9 +77,18 @@ class Coworking(Base):
     id = Column(BigInteger,
                 primary_key=True)               # Unique event ID
     uid = Column(BigInteger)                    # User ID
-    time = Column(DateTime)                     # Time of the event
+    time = Column(DateTime, default=datetime.utcnow)                     # Time of the event
     status = Column(IntEnum(CoworkingStatus))   # Coworking status
     temp_delta = Column(Integer, default=None)  # Temporarily closed delta (in minutes)
+
+
+class CoworkingTrustedUser(Base):
+    __tablename__ = 'coworking_trusted_users'
+    """Coworking trusted users model for SQLAlchemy"""
+    uid = Column(BigInteger, primary_key=True, nullable=False)
+    # not null
+    admin_uid = Column(BigInteger, nullable=False)  #, ForeignKey('users.uid'))
+    time = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class AdminCoworkingNotification(Base):

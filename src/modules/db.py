@@ -5,7 +5,7 @@ from os import getenv
 from time import sleep
 from sqlalchemy.orm import sessionmaker
 from modules.models import Base, User, UserData
-from modules.models import CoworkingStatus
+from modules.models import CoworkingStatus, CoworkingTrustedUser
 from modules.models import Group, GroupType
 from modules.models import ChatSettings
 from modules.models import Coworking, AdminCoworkingNotification
@@ -14,6 +14,7 @@ from typing import List, Union
 from sqlalchemy.exc import OperationalError as sqlalchemyOpError
 from psycopg2 import OperationalError as psycopg2OpError
 # endregion
+
 
 class DBManager:
     def __init__(self, log):
@@ -37,6 +38,7 @@ class DBManager:
     def __del__(self):
         """Close the database connection when the object is destroyed"""
         self._close()
+
 
     # region Connection setup
     def _connect(self) -> None:
@@ -78,6 +80,8 @@ class DBManager:
                 self.add_group(gid=group, name=group.name, gtype=group)
     # endregion
 
+
+    # region User management
     def user_exists(self, uid: int) -> bool:
         """Check if a user exists in the database"""
         return self.session.query(User).filter(User.uid == uid).first() is not None
@@ -138,7 +142,10 @@ class DBManager:
             if group is not None:
                 return group.gtype in self.admin_groups
         return False
+    # endregion
 
+
+    # region Group management
     def set_user_group(self, uid: int, gid: int):
         """Set the group id of an admin"""
         self.session.query(User).filter(User.uid == uid).first().gid = gid
@@ -172,7 +179,10 @@ class DBManager:
         else:
             groups = self.session.query(Group).all()
             return "\n".join([f"{i+1}. {g.name}" for i, g in enumerate(groups)])
+    # endregion
 
+
+    # region Admin statistics
     def get_users_str(self, gid: int = None) -> str:
         """Get a string list of users of a given group"""
         if gid is not None:
@@ -187,6 +197,33 @@ class DBManager:
         users = self.session.query(User).all()
         return "\n".join([f"{i+1}. [{u.first_name} {u.last_name if u.last_name else ''}] @{u.uname if u.uname else '—'} [{u.uid}] ({self.get_group_name(u.gid)})" for i, u in enumerate(users)])
 
+    def get_coworking_log(self) -> List[Coworking]:
+        return self.session.query(Coworking).all()
+
+    def get_coworking_log_str(self) -> str:
+        return "\n".join([f"{i+1}. {c.time} - {c.uid} - {'open' if c.status == CoworkingStatus.open else ('event_open' if CoworkingStatus.event_open else ('temp_closed' if CoworkingStatus.temp_closed else 'closed'))}" for i, c in enumerate(self.get_coworking_log())])
+
+    def get_user_count(self) -> int:
+        """Get the current amount of users in the database"""
+        return self.session.query(User).count()
+
+    def get_admin_count(self) -> int:
+        """Get the current amount of admins in the database"""
+        return self.session.query(User).filter(User.gid == GroupType.itam_hq).count()
+
+    def get_stats(self) -> dict:
+        """Get a dict of all stats"""
+        return {
+            "users": self.get_user_count(),
+            "admins": self.get_admin_count(),
+            "coworking_status": self.get_coworking_status(),
+            "coworking_log_count": len(self.get_coworking_log()),
+            "coworking_notifications": self.get_coworking_notification_enabled_count()
+        }
+    # endregion
+
+
+    # region User data fetchers
     def get_user_data(self, uid: int) -> dict:
         """Get information about a user"""
         aux = self.session.query(UserData).filter(UserData.uid == uid).first()
@@ -230,7 +267,10 @@ class DBManager:
         """Get the resume of a user"""
         resume = self.session.query(UserData).filter(UserData.uid == uid).first().resume
         return resume if resume else "Резюме не установлено"
+    # endregion
 
+
+    # region Coworking management
     def get_coworking_status(self) -> CoworkingStatus:
         """Get the status of the coworking space"""
         return self.session.query(Coworking).order_by(Coworking.id.desc()).first().status
@@ -266,12 +306,6 @@ class DBManager:
         self.session.commit()
         return True
 
-    def get_coworking_log(self) -> List[Coworking]:
-        return self.session.query(Coworking).all()
-
-    def get_coworking_log_str(self) -> str:
-        return "\n".join([f"{i+1}. {c.time} - {c.uid} - {'open' if c.status == CoworkingStatus.open else ('event_open' if CoworkingStatus.event_open else ('temp_closed' if CoworkingStatus.temp_closed else 'closed'))}" for i, c in enumerate(self.get_coworking_log())])
-
     def trim_coworking_status_log(self, limit: int = 10):
         """Trim the coworking log to the specified limit, starting from the oldest entry"""
         log = self.get_coworking_log()
@@ -279,6 +313,36 @@ class DBManager:
             for i in range(len(log) - limit):
                 self.session.delete(log[i])
             self.session.commit()
+
+    # Trusted users
+    def is_coworking_user_trusted(self, uid: int) -> bool:
+        """Check if a user is trusted"""
+        admin: bool = self.is_admin(uid)
+        trusted: bool = self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first() is not None
+        return admin or trusted
+
+    def coworking_trusted_user_add(self, uid: int, admin_uid: int) -> bool:
+        """Add a user to trusted coworking users table (CoworkingTrustedUsers)
+        Return False if the user is already trusted, else True"""
+        if self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first() is not None:
+            return False
+        self.session.add(CoworkingTrustedUser(uid=uid, admin_uid=admin_uid))
+        self.session.commit()
+        return True
+
+    def coworking_trusted_user_del(self, uid: int) -> None:
+        """Remove a user from trusted coworking users table (CoworkingTrustedUsers)"""
+        if self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first() is None:
+            return
+        self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).delete()
+        self.session.commit()
+        return True
+
+    def coworking_trusted_user_get_admin_uid(self, uid: int) -> int:
+        """Get admin_id of a trusted user"""
+        return self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first().admin_uid
+    # endregion
+
 
     # region Coworking notifications
     def change_coworking_notifications(self, cid: int, notify: bool) -> None:
@@ -379,6 +443,7 @@ class DBManager:
     # endregion
     # endregion
 
+
     # region Answer plaintext user messages
     def change_message_answers_status(self, cid: int, enabled: bool) -> None:
         """Enable answers to user messages for a chat id (cid)"""
@@ -413,6 +478,8 @@ class DBManager:
             return True
     # endregion
 
+
+    # region Privelege management
     def get_user_chats(self) -> list:
         """Get a list of all uids with GroupType user"""
         return [i.uid for i in self.session.query(User).filter(User.gid == GroupType.users).all()]
@@ -425,24 +492,6 @@ class DBManager:
         """Get a list of all uids"""
         return [i.uid for i in self.session.query(User).all()]
 
-    def get_user_count(self) -> int:
-        """Get the current amount of users in the database"""
-        return self.session.query(User).count()
-
-    def get_admin_count(self) -> int:
-        """Get the current amount of admins in the database"""
-        return self.session.query(User).filter(User.gid == GroupType.itam_hq).count()
-
-    def get_stats(self) -> dict:
-        """Get a dict of all stats"""
-        return {
-            "users": self.get_user_count(),
-            "admins": self.get_admin_count(),
-            "coworking_status": self.get_coworking_status(),
-            "coworking_log_count": len(self.get_coworking_log()),
-            "coworking_notifications": self.get_coworking_notification_enabled_count()
-        }
-
     def get_superadmin_uids(self) -> list[int]:
         """Get a list of all superadmins"""
         return [int(i) for i in getenv("SUPERADMIN_UIDS").split(":")]
@@ -450,3 +499,4 @@ class DBManager:
     def is_superadmin(self, uid: int) -> bool:
         """Check if a user is a superadmin"""
         return uid in self.get_superadmin_uids()
+    # endregion
