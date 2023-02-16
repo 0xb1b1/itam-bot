@@ -142,9 +142,12 @@ async def send_coworking_notifications(is_open: bool, delta_mins: int = 0) -> No
     for cid in cids:
         if not cids[cid]["notifications_enabled"]:
             continue
-        await bot.send_message(cid, replies.coworking_status_changed(is_open,
-                                                                     responsible_uname=db.get_coworking_responsible_uname(),
-                                                                     delta_mins=delta_mins))
+        try:
+            await bot.send_message(cid, replies.coworking_status_changed(is_open,
+                                                                         responsible_uname=db.get_coworking_responsible_uname(),
+                                                                         delta_mins=delta_mins))
+        except Exception as exc:
+            log.debug(f'{cid}: DEBUGERR - Failed to send message with error {exc}')
 
 async def broadcast(message: str, scope: str, custom_scope: list = None) -> None:
     if custom_scope:
@@ -490,8 +493,8 @@ async def coworking_event_open(message: Union[types.Message, types.CallbackQuery
     if coworking.get_status() == CoworkingStatus.event_open:
         await conv_call_to_msg(message).reply("Коворкинг уже открыт (с предупреждением о проведении мероприятия)")
         return
-    coworking.close(message.from_user.id)
-    await send_coworking_notifications(CoworkingStatus.closed)
+    coworking.event_open(message.from_user.id)
+    await send_coworking_notifications(CoworkingStatus.event_open)
     await conv_call_to_msg(message).reply("Коворкинг теперь открыт (с предупреждением о проведении мероприятия)")
     log.info(f"Coworking opened for an event by {message.from_user.id}")
 

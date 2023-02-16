@@ -41,21 +41,21 @@ services:
     depends_on:
       - db
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: itam-bot-pgadmin
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-    ports:
-      - "23439:80"
-    volumes:
-      - ./docker/pgadmin:/var/lib/pgadmin
-    networks:
-      - itambot-network
-    depends_on:
-      - db
+  # pgadmin:
+  #   image: dpage/pgadmin4
+  #   container_name: itam-bot-pgadmin
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+  #   ports:
+  #     - "23439:80"
+  #   volumes:
+  #     - ./docker/pgadmin:/var/lib/pgadmin
+  #   networks:
+  #     - itambot-network
+  #   depends_on:
+  #     - db
 
 networks:
   itambot-network:

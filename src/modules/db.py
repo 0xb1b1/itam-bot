@@ -43,7 +43,8 @@ class DBManager:
     # region Connection setup
     def _connect(self) -> None:
         """Connect to the postgresql database"""
-        self.engine = create_engine(f'postgresql+psycopg2://{self.pg_user}:{self.pg_pass}@{self.pg_host}:{self.pg_port}/{self.pg_db}')
+        self.engine = create_engine(f'postgresql+psycopg2://{self.pg_user}:{self.pg_pass}@{self.pg_host}:{self.pg_port}/{self.pg_db}',
+                                    pool_pre_ping=True)
         Base.metadata.bind = self.engine
         db_session = sessionmaker(bind=self.engine)
         self.session = db_session()
