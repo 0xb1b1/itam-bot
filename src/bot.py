@@ -634,7 +634,7 @@ async def user_data_get_resume(message: types.Message) -> None:
 async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     """Edit user profile"""
     try:
-        state.finish()
+        await state.finish()
     except:
         pass
     short_user_data = db.get_user_data_short(call.from_user.id)
@@ -675,13 +675,13 @@ async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> N
 @dp.message_handler(state=UserEditProfile.first_name)
 async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
     """Edit user profile first name"""
+    await state.finish()
     state_data = await state.get_data()
     await state.update_data(first_name=message.text)
     await message.answer(replies.profile_edit_first_name(message.text,
                                                          state_data['last_name']))
     db.set_user_data_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
-    await state.finish()
     await state.set_state(UserEditProfile.entrypoint)
 
 @dp.message_handler(state=UserEditProfile.last_name)
