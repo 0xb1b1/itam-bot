@@ -681,17 +681,17 @@ async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> N
 @dp.message_handler(state=UserEditProfile.first_name)
 async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
     """Edit user profile first name"""
-    await state.finish()
     state_data = await state.get_data()
     await state.update_data(first_name=message.text)
     await message.answer(replies.profile_edit_first_name(message.text,
                                                          state_data['last_name']))
     db.set_user_data_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
+    await state.finish()
     await state.set_state(UserEditProfile.entrypoint)
 
 @dp.message_handler(state=UserEditProfile.last_name)
-async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
+async def edit_profile_last_name(message: types.Message, state: FSMContext) -> None:
     """Edit user profile last name"""
     state_data = await state.get_data()
     await state.update_data(first_name=message.text)
