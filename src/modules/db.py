@@ -272,6 +272,14 @@ class DBManager:
 
 
     # region User data setters
+    def set_user_data_name(self, uid: int, first_name: str, last_name: str) -> Tuple[str, str]:
+        """Set first and last names of a user"""
+        user = self.session.query(User).filter(User.uid == uid).first()
+        user.first_name = first_name
+        user.last_name = last_name
+        self.session.commit()
+        return (first_name, last_name)
+
     def set_user_data_first_name(self, uid: int, first_name: str) -> str:
         """Set the first name of a user"""
         user = self.session.query(User).filter(User.uid == uid).first()
