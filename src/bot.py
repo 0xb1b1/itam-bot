@@ -679,7 +679,7 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
                                                          state_data['last_name']))
     db.set_user_data_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
-    await UserEditProfile.finish()
+    await state.finish()
     await state.set_state(UserEditProfile.entrypoint)
 
 @dp.message_handler(state=UserEditProfile.last_name)
@@ -691,7 +691,7 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
                                                          state_data['last_name']))
     db.set_user_data_last_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
-    await UserEditProfile.finish()
+    await state.finish()
     await state.set_state(UserEditProfile.entrypoint)
 # endregion
 
