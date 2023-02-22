@@ -652,19 +652,21 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     # Get field name
     field = call.data.split('_')[-1]
     await call.answer()
+    state_data = await state.get_data()
     if field == 'name':
         await bot.send_message(call.from_user.id,
-                               replies.profile_edit_name(state.get_data()['first_name'],
-                                                         state.get_data()['last_name']))
+                               replies.profile_edit_name(state_data['first_name'],
+                                                         state_data['last_name']))
     else:
         await bot.send_message("Field not editable yet")
 
 @dp.message_handler(state=UserEditProfile.edit_name)
 async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
     """Edit user profile first name"""
+    state_data = await state.get_data()
     await state.update_data(first_name=message.text)
     await message.answer(replies.profile_edit_name_lastname(message.text,
-                                                           state.get_data()['last_name']))
+                                                            state_data['last_name']))
     await UserEditProfile.finish()
     await UserEditProfileName.last_name.set()
 
@@ -673,8 +675,10 @@ async def edit_profile_last_name(message: types.Message, state: FSMContext) -> N
     """Edit user profile last name"""
     await state.update_data(last_name=message.text)
     # Update name in database
-    (first_name, last_name) = db.set_user_data_name(message.from_user.id, state.get_data()['first_name'],
-                          state.get_data()['last_name'])
+    state_data = await state.get_data()
+    (first_name, last_name) = db.set_user_data_name(message.from_user.id,
+                                                    state_data['first_name'],
+                                                    state_data['last_name'])
     message.answer(replies.profile_edit_name_finished(first_name, last_name))
     await UserEditProfileName.finish()
     # Return to the main edit profile menu
