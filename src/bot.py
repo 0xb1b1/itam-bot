@@ -631,7 +631,7 @@ async def user_data_get_resume(message: types.Message) -> None:
 
 @dp.callback_query_handler(lambda c: c.data == 'edit_profile')
 @dp.callback_query_handler(state=UserEditProfile.entrypoint)
-async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
+async def edit_profile(call: types.CallbackQuery, state: FSMContext, secondary_run: bool = False) -> None:
     """Edit user profile"""
     try:
         await state.finish()
@@ -645,8 +645,14 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
         if key in ['uid', 'gname']:
             continue
         keyboard.add(types.InlineKeyboardButton(field_names[key], callback_data=f'edit_profile_{key}'))
-    await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
-                                 reply_markup=keyboard)
+    if not secondary_run:
+        await call.answer()
+        await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
+                                    reply_markup=keyboard)
+    else:
+        await bot.send_message(call.from_user.id,
+                               replies.profile_info(db.get_user_data_short(call.from_user.id)),
+                               reply_markup=keyboard)
     await state.set_state(UserEditProfile.selector)
     await state.update_data(first_name=short_user_data['first_name'], last_name=short_user_data['last_name'])
 
