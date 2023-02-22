@@ -113,7 +113,8 @@ class AdminCoworkingTempCloseFlow(StatesGroup):
     confirm = State()
 
 class UserEditProfile(StatesGroup):
-    active = State()
+    entrypoint = State()
+    selector = State()
     first_name = State()
     last_name = State()
 # endregion
@@ -629,8 +630,11 @@ async def user_data_get_resume(message: types.Message) -> None:
     await message.reply(db.get_user_data_resume(message.from_user.id))
 
 @dp.callback_query_handler(lambda c: c.data == 'edit_profile')
+@dp.callback_query_handler(state=UserEditProfile.entrypoint)
 async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     """Edit user profile"""
+    if state == UserEditProfile.entrypoint:  #! IDK whether this really works
+        await state.finish()
     short_user_data = db.get_user_data_short(call.from_user.id)
     fields = list(short_user_data.keys())
     field_names = replies.profile_fields()
@@ -641,14 +645,14 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
         keyboard.add(types.InlineKeyboardButton(field_names[key], callback_data=f'edit_profile_{key}'))
     await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
                                  reply_markup=keyboard)
-    await state.set_state(UserEditProfile.active)
+    await state.set_state(UserEditProfile.selector)
     await state.update_data(first_name=short_user_data['first_name'], last_name=short_user_data['last_name'])
 
     await call.message.reply("Что изменим?", reply_markup=nav.inlCancelMenu)
 
-@dp.callback_query_handler(state=UserEditProfile.active)
-async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
-    """Edit user profile"""
+@dp.callback_query_handler(state=UserEditProfile.selector)
+async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> None:
+    """Edit user profile - select action"""
     # Get field name
     await call.answer()
     state_data = await state.get_data()
@@ -676,7 +680,7 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
     db.set_user_data_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
     await UserEditProfile.finish()
-    await state.set_state(UserEditProfile.active)
+    await state.set_state(UserEditProfile.entrypoint)
 
 @dp.message_handler(state=UserEditProfile.last_name)
 async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
@@ -688,7 +692,7 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
     db.set_user_data_last_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
     await UserEditProfile.finish()
-    await state.set_state(UserEditProfile.active)
+    await state.set_state(UserEditProfile.entrypoint)
 # endregion
 
 # region Plaintext answers in groups (chats/superchats)
