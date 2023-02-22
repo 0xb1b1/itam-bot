@@ -111,6 +111,9 @@ class AdminCoworkingTempCloseFlow(StatesGroup):
     delta = State()
     notification = State()
     confirm = State()
+
+class UserEditProfile(StatesGroup):
+    active = State()
 # endregion
 
 
@@ -635,7 +638,17 @@ async def edit_profile(call: types.CallbackQuery) -> None:
         keyboard.add(types.InlineKeyboardButton(field_names[key], callback_data=f'edit_profile_{key}'))
     await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
                                  reply_markup=keyboard)
+    await UserEditProfile.active.set()
     await call.message.reply("Что изменим?", reply_markup=nav.inlCancelMenu)
+
+@dp.callback_query_handler(state=UserEditProfile.active)
+async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
+    """Edit user profile"""
+    # Get field name
+    field = call.data.split('_')[-1]
+    call.answer()
+    bot.send_message(call.from_user.id, field)
+    await state.finish()
 # endregion
 
 # region Plaintext answers in groups (chats/superchats)
