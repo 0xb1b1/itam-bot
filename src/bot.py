@@ -652,12 +652,13 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     # Get field name
     await call.answer()
     state_data = await state.get_data()
-    if call.data == 'first_name':
+    fn = lambda x: f'edit_profile_{x}'
+    if call.data == fn('first_name'):
         await bot.send_message(call.from_user.id,
                                replies.profile_edit_first_name(state_data['first_name'],
                                                                state_data['last_name']))
         await state.set_state(UserEditProfile.first_name)
-    elif call.data == 'last_name':
+    elif call.data == fn('last_name'):
         await bot.send_message(call.from_user.id,
                                replies.profile_edit_last_name(state_data['first_name'],
                                                               state_data['last_name']))
