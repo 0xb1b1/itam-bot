@@ -633,7 +633,8 @@ async def user_data_get_resume(message: types.Message) -> None:
 @dp.callback_query_handler(lambda c: c.data == 'edit_profile')
 async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     """Edit user profile"""
-    fields = list(db.get_user_data_short(call.from_user.id).keys())
+    short_user_data = db.get_user_data_short(call.from_user.id)
+    fields = list(short_user_data.keys())
     field_names = replies.profile_fields()
     keyboard = types.InlineKeyboardMarkup(resize_keyboard=True)
     for key in fields:
@@ -643,7 +644,7 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
                                  reply_markup=keyboard)
     await state.set_state(UserEditProfile.active)
-    await state.update_data(first_name=fields['first_name'], last_name=fields['last_name'])
+    await state.update_data(first_name=short_user_data['first_name'], last_name=short_user_data['last_name'])
 
     await call.message.reply("Что изменим?", reply_markup=nav.inlCancelMenu)
 
