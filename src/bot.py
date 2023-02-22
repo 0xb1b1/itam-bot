@@ -677,8 +677,6 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
     """Edit user profile first name"""
     state_data = await state.get_data()
     await state.update_data(first_name=message.text)
-    await message.answer(replies.profile_edit_first_name(message.text,
-                                                         state_data['last_name']))
     db.set_user_data_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
     await state.finish()
@@ -688,8 +686,6 @@ async def edit_profile_last_name(message: types.Message, state: FSMContext) -> N
     """Edit user profile last name"""
     state_data = await state.get_data()
     await state.update_data(first_name=message.text)
-    await message.answer(replies.profile_edit_first_name(message.text,
-                                                         state_data['last_name']))
     db.set_user_data_last_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
     await state.finish()
