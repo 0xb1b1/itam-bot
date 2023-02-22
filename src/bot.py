@@ -113,7 +113,6 @@ class AdminCoworkingTempCloseFlow(StatesGroup):
     confirm = State()
 
 class UserEditProfile(StatesGroup):
-    entrypoint = State()
     selector = State()
     first_name = State()
     last_name = State()
@@ -630,13 +629,8 @@ async def user_data_get_resume(message: types.Message) -> None:
     await message.reply(db.get_user_data_resume(message.from_user.id))
 
 @dp.callback_query_handler(lambda c: c.data == 'edit_profile')
-@dp.callback_query_handler(state=UserEditProfile.entrypoint)
 async def edit_profile(call: types.CallbackQuery, state: FSMContext, secondary_run: bool = False) -> None:
     """Edit user profile"""
-    try:
-        await state.finish()
-    except:
-        pass
     short_user_data = db.get_user_data_short(call.from_user.id)
     fields = list(short_user_data.keys())
     field_names = replies.profile_fields()
@@ -688,7 +682,6 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
     db.set_user_data_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
     await state.finish()
-    await state.set_state(UserEditProfile.entrypoint)
 
 @dp.message_handler(state=UserEditProfile.last_name)
 async def edit_profile_last_name(message: types.Message, state: FSMContext) -> None:
@@ -700,7 +693,6 @@ async def edit_profile_last_name(message: types.Message, state: FSMContext) -> N
     db.set_user_data_last_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
     await state.finish()
-    await state.set_state(UserEditProfile.entrypoint)
 # endregion
 
 # region Plaintext answers in groups (chats/superchats)
