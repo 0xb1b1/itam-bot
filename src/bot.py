@@ -671,7 +671,7 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
     await message.answer(replies.profile_edit_name_lastname(message.text,
                                                             state_data['last_name']))
     await UserEditProfile.finish()
-    await UserEditProfileName.last_name.set()
+    await state.set_state(UserEditProfileName.last_name)
 
 @dp.message_handler(state=UserEditProfileName.last_name)
 async def edit_profile_last_name(message: types.Message, state: FSMContext) -> None:
