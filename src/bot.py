@@ -630,7 +630,7 @@ async def edit_profile(call: types.CallbackQuery) -> None:
     field_names = replies.profile_fields()
     keyboard = types.InlineKeyboardMarkup(resize_keyboard=True)
     for key in fields:
-        if key == 'uid':
+        if key in ['uid', 'gname']:
             continue
         keyboard.add(types.InlineKeyboardButton(field_names[key], callback_data=f'edit_profile_{key}'))
     await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
