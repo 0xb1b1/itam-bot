@@ -633,8 +633,10 @@ async def user_data_get_resume(message: types.Message) -> None:
 @dp.callback_query_handler(state=UserEditProfile.entrypoint)
 async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     """Edit user profile"""
-    if state == UserEditProfile.entrypoint:  #! IDK whether this really works
-        await state.finish()
+    try:
+        state.finish()
+    except:
+        pass
     short_user_data = db.get_user_data_short(call.from_user.id)
     fields = list(short_user_data.keys())
     field_names = replies.profile_fields()
