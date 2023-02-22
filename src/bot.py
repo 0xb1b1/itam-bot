@@ -661,7 +661,7 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
                                                          state_data['last_name']))
         await state.set_state(UserEditProfile.edit_name)
     else:
-        await bot.send_message("Field not editable yet")
+        await bot.send_message(call.from_user.id, "Field is not editable yet")
 
 @dp.message_handler(state=UserEditProfile.edit_name)
 async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
@@ -671,7 +671,7 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext) -> 
     await message.answer(replies.profile_edit_name_lastname(message.text,
                                                             state_data['last_name']))
     await UserEditProfile.finish()
-    await UserEditProfileName.last_name.set()
+    await state.set_state(UserEditProfileName.last_name)
 
 @dp.message_handler(state=UserEditProfileName.last_name)
 async def edit_profile_last_name(message: types.Message, state: FSMContext) -> None:
@@ -682,10 +682,10 @@ async def edit_profile_last_name(message: types.Message, state: FSMContext) -> N
     (first_name, last_name) = db.set_user_data_name(message.from_user.id,
                                                     state_data['first_name'],
                                                     state_data['last_name'])
-    message.answer(replies.profile_edit_name_finished(first_name, last_name))
+    message.answer(replies.profile_edit_name_finalize(first_name, last_name))
     await UserEditProfileName.finish()
     # Return to the main edit profile menu
-    await UserEditProfile.active.set()
+    await state.set_state(UserEditProfile.active)
 # endregion
 
 # region Plaintext answers in groups (chats/superchats)

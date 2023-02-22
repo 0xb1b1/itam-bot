@@ -58,7 +58,7 @@ def profile_edit_name_lastname(first_name: str, last_name: str) -> str:
 
 Отправьте новую фамилию"""
 
-def profile_edit_name_finished(first_name: str, last_name: str) -> str:
+def profile_edit_name_finalize(first_name: str, last_name: str) -> str:
     return f"""🛂 Изменение имени
 Новое имя: {first_name}
 Новая фамилия: {last_name}
