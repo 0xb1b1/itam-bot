@@ -646,8 +646,8 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     """Edit user profile"""
     # Get field name
     field = call.data.split('_')[-1]
-    call.answer()
-    bot.send_message(call.from_user.id, field)
+    await call.answer()
+    await bot.send_message(call.from_user.id, field)
     await state.finish()
 # endregion
 
