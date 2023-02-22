@@ -652,11 +652,12 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext) -> None:
     # Get field name
     field = call.data.split('_')[-1]
     await call.answer()
-    await bot.send_message(call.from_user.id, replies.profile_edit(field))
     if field == 'name':
         await bot.send_message(call.from_user.id,
                                replies.profile_edit_name(state.get_data()['first_name'],
                                                          state.get_data()['last_name']))
+    else:
+        await bot.send_message("Field not editable yet")
 
 @dp.message_handler(state=UserEditProfile.edit_name)
 async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
