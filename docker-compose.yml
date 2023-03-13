@@ -1,5 +1,9 @@
 version: "3"
 
+volumes:
+  db:
+  logs:
+
 services:
   db:
     container_name: itam-bot-psql
@@ -10,7 +14,7 @@ services:
       POSTGRES_PASSWORD: ${PG_PASS}
       POSTGRES_DB: ${PG_DB}
     volumes:
-      - ./docker/postgres:/var/lib/postgresql/data
+      - "db:/var/lib/postgresql/data"
     # ports:
     #   - "6961:5432"  #! Testing only!
     networks:
@@ -35,7 +39,7 @@ services:
       PG_PORT: ${PG_PORT}
       PG_DB:   ${PG_DB}
     volumes:
-      - ./docker/itam-bot:/data
+      - "logs:/data"
     networks:
       - itambot-network
     depends_on:
