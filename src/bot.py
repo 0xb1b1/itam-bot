@@ -114,7 +114,7 @@ class AdminCoworkingTempCloseFlow(StatesGroup):
 # endregion
 
 
-# region Multiuse functions
+# region Reusable functions
 def chat_is_group(message: types.Message) -> bool:
     """Check if message is sent from group or private chat"""
     # Check if the type of cmessage is CallbackQuery
@@ -189,18 +189,18 @@ def get_coworking_admin_markup(cmessage: Union[types.CallbackQuery, types.Messag
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup()
     if cw_binary_status:
         if cw_status == CoworkingStatus.open:
-            markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING, callback_data='coworking_close'))
+            markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING, callback_data='coworking:close'))
         else:
-            markup.add(InlineKeyboardButton(btntext.OPEN_COWORKING, callback_data='coworking_open'))
-        markup.add(InlineKeyboardButton(btntext.EVENT_OPEN_COWORKING, callback_data='coworking_event_open'))
-        markup.add(InlineKeyboardButton(btntext.TEMP_CLOSE_COWORKING, callback_data='coworking_temp_close'))
+            markup.add(InlineKeyboardButton(btntext.OPEN_COWORKING, callback_data='coworking:open'))
+        markup.add(InlineKeyboardButton(btntext.EVENT_OPEN_COWORKING, callback_data='coworking:event_open'))
+        markup.add(InlineKeyboardButton(btntext.TEMP_CLOSE_COWORKING, callback_data='coworking:temp_close'))
     else:
-        markup.add(InlineKeyboardButton(btntext.OPEN_COWORKING, callback_data='coworking_open'))
-        markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING, callback_data='coworking_close'))
+        markup.add(InlineKeyboardButton(btntext.OPEN_COWORKING, callback_data='coworking:open'))
+        markup.add(InlineKeyboardButton(btntext.CLOSE_COWORKING, callback_data='coworking:close'))
         if cw_status == CoworkingStatus.temp_closed:
-            markup.add(InlineKeyboardButton(btntext.EVENT_OPEN_COWORKING, callback_data='coworking_event_open'))
+            markup.add(InlineKeyboardButton(btntext.EVENT_OPEN_COWORKING, callback_data='coworking:event_open'))
         elif cw_status == CoworkingStatus.event_open:
-            markup.add(InlineKeyboardButton(btntext.TEMP_CLOSE_COWORKING, callback_data='coworking_temp_close'))
+            markup.add(InlineKeyboardButton(btntext.TEMP_CLOSE_COWORKING, callback_data='coworking:temp_close'))
     if not coworking.is_responsible(cmessage.from_user.id):
         markup.add(InlineKeyboardButton(btntext.COWORKING_TAKE_RESPONSIBILITY, callback_data='coworking_take_responsibility'))
     return markup
@@ -366,7 +366,7 @@ async def coworking_take_responsibility(cmessage: Union[types.CallbackQuery, typ
     db.coworking_status_set_uid_responsible(cmessage.from_user.id)
     await message.reply(replies.coworking_status_now_responsible())
 
-@dp.callback_query_handler(lambda c: c.data == 'coworking_open')
+@dp.callback_query_handler(lambda c: c.data == 'coworking:open')
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_open'])
 async def coworking_open(message: types.Message) -> None:
     """Set coworking status to open"""
@@ -386,7 +386,7 @@ async def coworking_open(message: types.Message) -> None:
     await conv_call_to_msg(message).reply("Коворкинг теперь открыт")
     log.info(f"Coworking opened by {message.from_user.id}")
 
-@dp.callback_query_handler(lambda c: c.data == 'coworking_close')
+@dp.callback_query_handler(lambda c: c.data == 'coworking:close')
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_close'])
 async def coworking_close(message: types.Message) -> None:
     """Set coworking status to closed"""
@@ -406,7 +406,7 @@ async def coworking_close(message: types.Message) -> None:
     await conv_call_to_msg(message).reply("Коворкинг теперь закрыт")
     log.info(f"Coworking closed by {message.from_user.id}")
 
-@dp.callback_query_handler(lambda c: c.data == 'coworking_temp_close')
+@dp.callback_query_handler(lambda c: c.data == 'coworking:temp_close')
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_temp_close'])
 async def coworking_temp_close_stage0(message: types.Message, state: FSMContext) -> None:
     """Set coworking status to temporarily closed"""
@@ -478,7 +478,7 @@ async def coworking_temp_close_stage2(message: types.Message, state: FSMContext)
     log.info(f"Coworking temporarily closed by {message.from_user.id} for {delta} minutes")
     await state.finish()
 
-@dp.callback_query_handler(lambda c: c.data == 'coworking_event_open')
+@dp.callback_query_handler(lambda c: c.data == 'coworking:event_open')
 @dp.message_handler(debug_dec, admin_only, commands=['coworking_event_open'])
 async def coworking_event_open(message: Union[types.Message, types.CallbackQuery]) -> None:
     """Set coworking status to opened for an event"""
