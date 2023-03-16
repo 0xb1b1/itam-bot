@@ -10,7 +10,7 @@ from modules.models import Group, GroupType
 from modules.models import ChatSettings
 from modules.models import Coworking, AdminCoworkingNotification
 from sqlalchemy import create_engine
-from typing import List, Union
+from typing import List, Union, Tuple
 from sqlalchemy.exc import OperationalError as sqlalchemyOpError
 from psycopg2 import OperationalError as psycopg2OpError
 # endregion
@@ -224,7 +224,7 @@ class DBManager:
     # endregion
 
 
-    # region User data fetchers
+    # region User data getters
     def get_user_data(self, uid: int) -> dict:
         """Get information about a user"""
         aux = self.session.query(UserData).filter(UserData.uid == uid).first()
@@ -268,6 +268,52 @@ class DBManager:
         """Get the resume of a user"""
         resume = self.session.query(UserData).filter(UserData.uid == uid).first().resume
         return resume if resume else "Резюме не установлено"
+    # endregion
+
+
+    # region User data setters
+    def set_user_data_name(self, uid: int, first_name: str, last_name: str) -> Tuple[str, str]:
+        """Set first and last names of a user"""
+        user = self.session.query(User).filter(User.uid == uid).first()
+        user.first_name = first_name
+        user.last_name = last_name
+        self.session.commit()
+        return (first_name, last_name)
+
+    def set_user_data_first_name(self, uid: int, first_name: str) -> str:
+        """Set the first name of a user"""
+        user = self.session.query(User).filter(User.uid == uid).first()
+        user.first_name = first_name
+        self.session.commit()
+        return first_name
+
+    def set_user_data_last_name(self, uid: int, last_name: str) -> str:
+        """Set the last name of a user"""
+        user = self.session.query(User).filter(User.uid == uid).first()
+        user.last_name = last_name
+        self.session.commit()
+        return last_name
+
+    def set_user_data_phone(self, uid: int, phone: str) -> str:
+        """Set the phone number of a user"""
+        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user.phone = phone
+        self.session.commit()
+        return phone
+
+    def set_user_data_email(self, uid: int, email: str) -> str:
+        """Set the email of a user"""
+        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user.email = email
+        self.session.commit()
+        return email
+
+    def set_user_data_birthday(self, uid: int, birthday: date) -> Tuple[date, str]:
+        """Set the birthday of a user"""
+        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user.birthday = birthday
+        self.session.commit()
+        return birthday, birthday.strftime("%d.%m.%Y")
     # endregion
 
 

@@ -111,6 +111,11 @@ class AdminCoworkingTempCloseFlow(StatesGroup):
     delta = State()
     notification = State()
     confirm = State()
+
+class UserEditProfile(StatesGroup):
+    selector = State()
+    first_name = State()
+    last_name = State()
 # endregion
 
 
@@ -624,18 +629,66 @@ async def user_data_get_resume(message: types.Message) -> None:
     await message.reply(db.get_user_data_resume(message.from_user.id))
 
 @dp.callback_query_handler(lambda c: c.data == 'edit_profile')
-async def edit_profile(call: types.CallbackQuery) -> None:
+async def edit_profile(call: types.CallbackQuery, state: FSMContext, secondary_run: bool = False) -> None:
     """Edit user profile"""
-    fields = list(db.get_user_data_short(call.from_user.id).keys())
+    short_user_data = db.get_user_data_short(call.from_user.id)
+    fields = list(short_user_data.keys())
     field_names = replies.profile_fields()
     keyboard = types.InlineKeyboardMarkup(resize_keyboard=True)
     for key in fields:
-        if key == 'uid':
+        if key in ['uid', 'gname']:
             continue
         keyboard.add(types.InlineKeyboardButton(field_names[key], callback_data=f'edit_profile_{key}'))
-    await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
-                                 reply_markup=keyboard)
+    if not secondary_run:
+        await call.answer()
+        await call.message.edit_text(replies.profile_info(db.get_user_data_short(call.from_user.id)),
+                                    reply_markup=keyboard)
+    else:
+        await bot.send_message(call.from_user.id,
+                               replies.profile_info(db.get_user_data_short(call.from_user.id)),
+                               reply_markup=keyboard)
+    await state.set_state(UserEditProfile.selector)
+    await state.update_data(first_name=short_user_data['first_name'], last_name=short_user_data['last_name'])
+
     await call.message.reply("Что изменим?", reply_markup=nav.inlCancelMenu)
+
+@dp.callback_query_handler(state=UserEditProfile.selector)
+async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> None:
+    """Edit user profile - select action"""
+    # Get field name
+    await call.answer()
+    state_data = await state.get_data()
+    fn = lambda x: f'edit_profile_{x}'
+    if call.data == fn('first_name'):
+        await bot.send_message(call.from_user.id,
+                               replies.profile_edit_first_name(state_data['first_name'],
+                                                               state_data['last_name']))
+        await state.set_state(UserEditProfile.first_name)
+    elif call.data == fn('last_name'):
+        await bot.send_message(call.from_user.id,
+                               replies.profile_edit_last_name(state_data['first_name'],
+                                                              state_data['last_name']))
+        await state.set_state(UserEditProfile.last_name)
+    else:
+        await bot.send_message(call.from_user.id, "Field is not editable yet")
+
+@dp.message_handler(state=UserEditProfile.first_name)
+async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
+    """Edit user profile first name"""
+    state_data = await state.get_data()
+    await state.update_data(first_name=message.text)
+    db.set_user_data_first_name(message.from_user.id, message.text)
+    await message.answer(replies.profile_edit_success())
+    await state.finish()
+
+@dp.message_handler(state=UserEditProfile.last_name)
+async def edit_profile_last_name(message: types.Message, state: FSMContext) -> None:
+    """Edit user profile last name"""
+    state_data = await state.get_data()
+    await state.update_data(first_name=message.text)
+    db.set_user_data_last_name(message.from_user.id, message.text)
+    await message.answer(replies.profile_edit_success())
+    await state.finish()
 # endregion
 
 # region Plaintext answers in groups (chats/superchats)

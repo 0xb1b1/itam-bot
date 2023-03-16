@@ -42,6 +42,25 @@ def profile_info(info) -> str:
 {fields['bio']}: /bio
 {fields['resume']}: /resume"""
 
+def profile_edit_first_name(first_name: str, last_name: str) -> str:
+    return f"""🛂 Изменение имени
+
+Текущее имя: {first_name}
+Фамилия: {last_name}
+
+Отправьте новое имя"""
+
+def profile_edit_last_name(first_name: str, last_name: str) -> str:
+    return f"""🛂 Изменение имени
+
+Имя: {first_name}
+Текущая фамилия: {last_name}
+
+Отправьте новую фамилию"""
+
+def profile_edit_success() -> str:
+    return "✅ Информация обновлена"
+
 def is_set(data) -> str:
     return data if data else btn.NOT_SET
 
