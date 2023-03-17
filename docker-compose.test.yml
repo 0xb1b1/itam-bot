@@ -1,0 +1,46 @@
+version: "3"
+
+volumes:
+  db:
+  logs:
+
+services:
+  db:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASS}
+      POSTGRES_DB: ${PG_DB}
+    volumes:
+      - "db:/var/lib/postgresql/data"
+    # ports:
+    #   - "6961:5432"  #! Testing only!
+
+  itam-bot:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    image: 0xb1b1/itam-bot-test:latest
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - "logs:/data"
+    depends_on:
+      - db
+
+  # pgadmin:
+  #   image: dpage/pgadmin4
+  #   restart: always
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+  #   ports:
+  #     - "23439:80"
+  #   volumes:
+  #     - ./docker/pgadmin:/var/lib/pgadmin
+  #   networks:
+  #     - itambot-network
+  #   depends_on:
+  #     - db

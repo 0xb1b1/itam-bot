@@ -6,7 +6,6 @@ volumes:
 
 services:
   db:
-    container_name: itam-bot-psql
     image: postgres:14
     restart: always
     environment:
@@ -15,17 +14,12 @@ services:
       POSTGRES_DB: ${PG_DB}
     volumes:
       - "db:/var/lib/postgresql/data"
-    # ports:
-    #   - "6961:5432"  #! Testing only!
-    networks:
-      - itambot-network
 
-  itam-bot:
-    container_name: itam-bot
+  bot:
     build:
       context: ./src
       dockerfile: Dockerfile
-    image: 0xb1b1/itam-bot
+    image: 0xb1b1/itam-bot:latest
     restart: always
     environment:
       TELEGRAM_API_TOKEN: ${TELEGRAM_API_TOKEN}
@@ -40,27 +34,5 @@ services:
       PG_DB:   ${PG_DB}
     volumes:
       - "logs:/data"
-    networks:
-      - itambot-network
     depends_on:
       - db
-
-  # pgadmin:
-  #   image: dpage/pgadmin4
-  #   container_name: itam-bot-pgadmin
-  #   restart: always
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
-  #   ports:
-  #     - "23439:80"
-  #   volumes:
-  #     - ./docker/pgadmin:/var/lib/pgadmin
-  #   networks:
-  #     - itambot-network
-  #   depends_on:
-  #     - db
-
-networks:
-  itambot-network:
-    name: itambot-network

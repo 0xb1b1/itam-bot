@@ -484,7 +484,7 @@ class DBManager:
     def coworking_opened_today(self) -> bool:
         """Check if the coworking space has been opened today"""
         try:
-            return self.session.query(CoworkingStatus).filter(CoworkingStatus.time.date() == datetime.now().date()).filter(CoworkingStatus.status == CoworkingStatus.open).first() is not None
+            return self.session.query(Coworking).filter(CoworkingStatus.time.date() == datetime.now().date()).filter(CoworkingStatus.status == CoworkingStatus.open).first() is not None
         except Exception as exc:
             self.log.error(f"Error while checking if coworking space has been opened today: {exc}")
     # endregion

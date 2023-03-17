@@ -4,12 +4,12 @@
 
 # region Regular dependencies
 import os
-import re                                    # Graceful shutdown
-import signal                                # Graceful shutdown
+# import re                                    # Graceful shutdown
+# import signal                                # Graceful shutdown
 import logging                               # Logging events
 import asyncio                               # Asynchronous sleep()
 from datetime import datetime
-from xmlrpc.client import Boolean            # Subscription checks
+# from xmlrpc.client import Boolean            # Subscription checks
 from typing import Optional, Union
 from aiogram import Bot, Dispatcher          # Telegram bot API
 from aiogram import executor, types          # Telegram API
@@ -22,8 +22,8 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from aiogram.utils import exceptions
-
 from sqlalchemy.exc import DataError
+
 # endregion
 # region Local dependencies
 from modules import markup as nav           # Bot menus
@@ -212,46 +212,36 @@ def get_coworking_admin_markup(cmessage: Union[types.CallbackQuery, types.Messag
 # endregion
 
 # region Scheduled tasks
-async def coworking_status_checker(open_time: datetime, close_time: datetime, sleep: int = 20, dry_run: bool = False):
+async def coworking_status_checker(open_time: datetime, close_time: datetime, timeout: int = 120, dry_run: bool = False):
     """Check if the coworking space is closed after open_time and open after close_time"""
-    try:
-        # Set open_time and close_time to current date
-        current_time = datetime.now()
-        open_time = open_time.replace(year=current_time.year, month=current_time.month, day=current_time.day)
-        close_time = close_time.replace(year=current_time.year, month=current_time.month, day=current_time.day)
-        if not dry_run:
-            admins = db.get_admin_chats()
-        else:
-            admins = [os.getenv("DEFAULT_ADMIN_UID")]
-        # Check if the coworking space is closed after open_time
-        if not current_time > open_time and coworking.get_status() == CoworkingStatus.closed:
-            if not coworking.opened_today() and not coworking.notified_closed_during_hours_today():
-                # Send broadcast to admins
-                log.debug("Sending broadcast to admins about coworking space being closed during hours")
-                await broadcast(replies.coworking_closed_during_hours(), custom_scope=admins)
-            else:
-                # Create debug log message
-                # TODO: Remove when debug is done
-                log.debug(f"NOT sending broadcast to admins (closed after open time); {coworking.opened_today()=}, {coworking.notified_closed_during_hours_today()=}")
-        elif current_time > close_time and coworking.get_status() == CoworkingStatus.open:
-            if not coworking.notified_open_after_hours_today():
-                # Send broadcast to admins
-                log.debug("Sending broadcast to admins about coworking space being open after hours")
-                await broadcast(replies.coworking_open_after_hours(), custom_scope=admins)
-            else:
-                log.debug(f"NOT sending broadcast to admins (closed after open time); {coworking.notified_closed_during_hours_today()=}")
-        else:
-            # Create debug log message
-            # TODO: Remove when debug is done
-            log.debug(f"NOT sending broadcast to admins (not closed after open time or not open after close time); closed after open time ({coworking.get_status() == CoworkingStatus.closed}, {current_time > open_time}), open after closed time ({coworking.get_status() == CoworkingStatus.open}, {current_time > close_time})")
-        # Log the datetime variables
-        log.debug(f"[coworking_status_checker] open_time: {open_time}, close_time: {close_time}, current_time: {current_time}, closed_after_open_time: {datetime.now() > open_time}, open_after_close_time: {datetime.now() > close_time}")
-        # Send all variables to debug
-        log.debug(f"[coworking_status_checker] {open_time=}, {close_time=}, {current_time=}, {coworking.get_status()=}, {coworking.opened_today()=}, {coworking.notified_closed_during_hours_today()=}, {coworking.notified_open_after_hours_today()=}")
-        # Sleep for the specified amount of time before running again
-        await asyncio.sleep(sleep)
-    except Exception as exc:
-        log.error(f"Error in coworking_status_checker: {exc}")
+    while True:
+        try:
+            # Set open_time and close_time to current date
+            timed = datetime.now()
+            current_time = int(timed.timestamp())
+            open_time_ts = int(open_time.replace(year=timed.year, month=timed.month, day=timed.day).timestamp())
+            close_time_ts = int(close_time.replace(year=timed.year, month=timed.month, day=timed.day).timestamp())
+            # if not dry_run:
+            #     admins = db.get_admin_chats()
+            # else:
+            #     admins = [os.getenv("DEFAULT_ADMIN_UID")]
+            if current_time > close_time_ts and coworking.get_status() in [CoworkingStatus.open, CoworkingStatus.event_open, CoworkingStatus.temp_closed]:
+                if not coworking.notified_open_after_hours_today():
+                    # Send broadcast to admins
+                    log.debug("Sending broadcast to admins about coworking space being open after hours")
+                    await broadcast(replies.coworking_open_after_hours(), scope="admins")
+                else:
+                    log.debug(f"NOT sending broadcast to admins (closed after open time); {coworking.notified_closed_during_hours_today()=}")
+            # Check if the coworking space is closed after open_time
+            # elif current_time <= open_time_ts and coworking.get_status() == CoworkingStatus.closed:
+            #     if not coworking.opened_today() and not coworking.notified_closed_during_hours_today():
+            #         # Send broadcast to admins
+            #         log.debug("Sending broadcast to admins about coworking space being closed during hours")
+            #         await broadcast(replies.coworking_closed_during_hours(), scope="admins")
+            # Sleep for the specified amount of time before running again
+            await asyncio.sleep(timeout)
+        except Exception as exc:
+            log.error(f"Error in coworking_status_checker: {exc}")
 # endregion
 
 # region Bot replies
@@ -387,7 +377,7 @@ async def coworking_open(message: types.Message) -> None:
         await conv_call_to_msg(message).reply("Коворкинг уже открыт")
         return
     coworking.open(message.from_user.id)
-    await send_coworking_notifications(CoworkingStatus.open)
+    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.open))
     await conv_call_to_msg(message).reply("Коворкинг теперь открыт")
     log.info(f"Coworking opened by {message.from_user.id}")
 
@@ -407,7 +397,7 @@ async def coworking_close(message: types.Message) -> None:
         await conv_call_to_msg(message).reply("Коворкинг уже закрыт")
         return
     coworking.close(message.from_user.id)
-    await send_coworking_notifications(CoworkingStatus.closed)
+    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.closed))
     await conv_call_to_msg(message).reply("Коворкинг теперь закрыт")
     log.info(f"Coworking closed by {message.from_user.id}")
 
@@ -477,7 +467,7 @@ async def coworking_temp_close_stage2(message: types.Message, state: FSMContext)
     delta: int = data['delta']
     # Temporarily close coworking
     coworking.temp_close(message.from_user.id, delta_mins=delta)
-    await send_coworking_notifications(CoworkingStatus.temp_closed, delta_mins=delta)
+    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.temp_closed, delta_mins=delta))
     await message.reply("Коворкинг теперь временно закрыт",
                         reply_markup=get_main_keyboard(message))
     log.info(f"Coworking temporarily closed by {message.from_user.id} for {delta} minutes")
@@ -499,7 +489,7 @@ async def coworking_event_open(message: Union[types.Message, types.CallbackQuery
         await conv_call_to_msg(message).reply("Коворкинг уже открыт (с предупреждением о проведении мероприятия)")
         return
     coworking.event_open(message.from_user.id)
-    await send_coworking_notifications(CoworkingStatus.event_open)
+    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.event_open))
     await conv_call_to_msg(message).reply("Коворкинг теперь открыт (с предупреждением о проведении мероприятия)")
     log.info(f"Coworking opened for an event by {message.from_user.id}")
 
@@ -556,7 +546,7 @@ async def admin_broadcast_stage3(message: types.Message, state: FSMContext) -> N
         await state.finish()
         return
     # Send broadcast
-    await broadcast(state_data['message'], scope)
+    asyncio.get_event_loop().create_task(broadcast(state_data['message'], scope))
     log.info(f"Admin {message.from_user.id} broadcasted message to scope {scope}\nMessage:\n\"\"\"\n{state_data['message']}\n\"\"\"")
     await message.reply(replies.broadcast_successful(), reply_markup=get_main_keyboard(message))
     await state.finish()
@@ -732,17 +722,11 @@ async def plaintext_answers_toggle_for_chat(message: types.Message):
     await bot.send_message(chat_id, replies.plaintext_answers_reply(status, toggled=True, admin_uname=message.from_user.username))
 # endregion
 
-# region Debug
-@dp.message_handler(admin_only, debug_dec, commands=['debug_cw'])
-async def debug_cw(message: types.Message) -> None:
-    """Debug coworking"""
-    await message.reply(db.get_coworking_notification_chats())
-# endregion
-
 # region Club information
 @dp.callback_query_handler(lambda c: c.data in [i+'_club_info' for i in ['ctf', 'hackathon', 'design', 'gamedev', 'robotics', 'ml']])
 async def club_info(call: types.CallbackQuery) -> None:
     """Club info"""
+    await call.answer()
     club = call.data.split('_')[0]
     # Edit previous bot message
     try:
@@ -867,10 +851,10 @@ async def answer(message: types.Message) -> None:
 # region StartUp
 def run() -> None:
     loop = asyncio.get_event_loop()
-    # loop.create_task(coworking_status_checker(datetime.strptime('2021-09-01 02:00:00', '%Y-%m-%d %H:%M:%S'),
-    #                                           datetime.strptime('2021-09-01 17:30:00', '%Y-%m-%d %H:%M:%S'),
-    #                                           sleep=10,
-    #                                           dry_run=True))
+    loop.create_task(coworking_status_checker(datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_OPENING_TIME", "09:00:00")}', '%Y-%m-%d %H:%M:%S'),
+                                              datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_CLOSING_TIME", "19:00:00")}', '%Y-%m-%d %H:%M:%S'),
+                                              timeout=int(os.getenv('WORKERS_SLEEP_TIMEOUT', '20')),
+                                              dry_run=True))
     log.info('Starting AIOgram...')
     executor.start_polling(dp, skip_updates=True)
     log.info('AIOgram stopped successfully')
