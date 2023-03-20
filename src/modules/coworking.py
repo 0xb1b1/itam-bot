@@ -79,3 +79,8 @@ class Manager:
     def get_responsible_uname(self) -> str:
         return self.db.get_coworking_responsible_uname()
     # endregion
+
+    # region Location
+    location = { 'lat': 55.727252,
+                 'lon': 37.607302 }
+    # endregion

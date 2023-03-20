@@ -242,6 +242,7 @@ async def coworking_status_checker(open_time: datetime, close_time: datetime, ti
             await asyncio.sleep(timeout)
         except Exception as exc:
             log.error(f"Error in coworking_status_checker: {exc}")
+            await asyncio.sleep(timeout)
 # endregion
 
 # region Bot replies
@@ -815,9 +816,18 @@ async def help_menu_reply(message: types.Message) -> None:
     inlHelpMenu = InlineKeyboardMarkup(resize_keyboard=True)
     inlHelpMenu.add(InlineKeyboardButton(btntext.CREDITS,
                                          callback_data='credits'))
+    inlHelpMenu.add(InlineKeyboardButton(btntext.COWORKING_LOCATION,
+                                         callback_data='coworking:location'))
     await message.reply(replies.help_message(),
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=inlHelpMenu)
+
+@dp.callback_query_handler(lambda c: c.data == 'coworking:location')
+async def bot_coworking_location(call: types.CallbackQuery) -> None:
+    await bot.send_location(call.from_user.id,
+                            coworking.location['lat'],
+                            coworking.location['lon'],
+                            reply_markup=get_main_keyboard(call))
 # endregion
 
 # Normal messages

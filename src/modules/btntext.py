@@ -46,4 +46,5 @@ ROBOTICS_CLUB = "Robotics"
 ML_CLUB = "ML"
 
 # Other buttons
-CREDITS = "Об авторах"
+CREDITS = "ℹ️ Об авторах"
+COWORKING_LOCATION = "📍 Местоположение коворкинга"
