@@ -297,7 +297,7 @@ async def get_users_verbose(message: types.Message) -> None:
 
 # region Coworking notifications
 # region User interaction
-@dp.callback_query_handler(lambda c: c.data == 'toggle_coworking_notifications', state='*')
+@dp.callback_query_handler(lambda c: c.data == 'coworking:toggle_notifications', state='*')
 @dp.message_handler(debug_dec, commands=['notify'])
 async def notify(message: types.Message) -> None:
     """Turn on notifications for a given chat ID"""
@@ -792,8 +792,10 @@ async def coworking_status_reply(message: types.Message) -> None:
     else:
         inlCoworkingControlMenu = InlineKeyboardMarkup().add(inlCoworkingControlBtn)
     are_notifications_on = db.get_coworking_notifications(message.chat.id)
+    inlCoworkingControlMenu.add(InlineKeyboardButton(btntext.COWORKING_LOCATION,
+                                                     callback_data='coworking:location'))
     inlCoworkingControlMenu.add(InlineKeyboardButton(replies.toggle_coworking_notifications(are_notifications_on),
-                                                     callback_data='toggle_coworking_notifications'))
+                                                     callback_data='coworking:toggle_notifications'))
     try:
         status = coworking.get_status()
         if status == CoworkingStatus.temp_closed:
@@ -824,10 +826,13 @@ async def help_menu_reply(message: types.Message) -> None:
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:location')
 async def bot_coworking_location(call: types.CallbackQuery) -> None:
+    await call.answer()
     await bot.send_location(call.from_user.id,
                             coworking.location['lat'],
                             coworking.location['lon'],
                             reply_markup=get_main_keyboard(call))
+    await call.message.edit_text(replies.coworking_location_info(),
+                                 reply_markup=get_main_keyboard(call))
 # endregion
 
 # Normal messages
