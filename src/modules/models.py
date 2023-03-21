@@ -11,8 +11,8 @@ Base = declarative_base()
 # region Enums
 class GroupType(enum.IntEnum):
     """Group types"""
-    itam_hq = 1
-    club_admins = 2
+    admins = 1
+    #club_admins = 2
     users = 3
 
 

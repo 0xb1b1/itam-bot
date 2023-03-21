@@ -33,7 +33,7 @@ class DBManager:
             else:
                 connected = True
         self._update_db()
-        self.admin_groups = [GroupType.itam_hq]
+        self.admin_groups = [GroupType.admins]
 
     def __del__(self):
         """Close the database connection when the object is destroyed"""
@@ -64,11 +64,11 @@ class DBManager:
         Base.metadata.create_all(self.engine)
         #! Create the default groups if they don't exist
         # Create ITAM admins group
-        if not self.session.query(Group).filter(Group.gtype == GroupType.itam_hq).first():
-            self.add_group(gid=GroupType.itam_hq, name='ITAM Headquarters', gtype=GroupType.itam_hq)
+        if not self.session.query(Group).filter(Group.gtype == GroupType.admins).first():
+            self.add_group(gid=GroupType.admins, name='ITAM Headquarters', gtype=GroupType.admins)
         # Add the default admin from ENV if they don't exist
         if not self.session.query(User).filter(User.uid == getenv('DEFAULT_ADMIN_UID')).first():
-            self.add_admin(uid=int(getenv('DEFAULT_ADMIN_UID')), uname=getenv('DEFAULT_ADMIN_USERNAME'), first_name=getenv('DEFAULT_ADMIN_FNAME'), gid=GroupType.itam_hq)
+            self.add_admin(uid=int(getenv('DEFAULT_ADMIN_UID')), uname=getenv('DEFAULT_ADMIN_USERNAME'), first_name=getenv('DEFAULT_ADMIN_FNAME'), gid=GroupType.admins)
         self.__update_groups()
         # Create the first coworking status if it doesn't exist
         if not self.session.query(Coworking).first():
@@ -210,7 +210,7 @@ class DBManager:
 
     def get_admin_count(self) -> int:
         """Get the current amount of admins in the database"""
-        return self.session.query(User).filter(User.gid == GroupType.itam_hq).count()
+        return self.session.query(User).filter(User.gid == GroupType.admins).count()
 
     def get_stats(self) -> dict:
         """Get a dict of all stats"""
@@ -533,7 +533,7 @@ class DBManager:
 
     def get_admin_chats(self) -> list:
         """Get a list of all uids with GroupType admin"""
-        return [i.uid for i in self.session.query(User).filter(User.gid == GroupType.itam_hq).all()]
+        return [i.uid for i in self.session.query(User).filter(User.gid == GroupType.admins).all()]
 
     def get_all_chats(self) -> list:
         """Get a list of all uids"""
