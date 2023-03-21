@@ -328,7 +328,7 @@ class DBManager:
 
     def set_coworking_status(self, status: CoworkingStatus, uid: int, delta_mins: int = 15) -> CoworkingStatus:
         """Update the status of the coworking space (add new entry to log)"""
-        if status == CoworkingStatus.temp_closed:
+        if status == CoworkingStatus.temp_closed: #!in [CoworkingStatus.temp_closed, CoworkingStatus.event_open, CoworkingStatus.event_closed]:
             coworking_status = Coworking(status=status, uid=uid, temp_delta=delta_mins, time=datetime.now())
         else:
             coworking_status = Coworking(status=status, uid=uid, time=datetime.now())

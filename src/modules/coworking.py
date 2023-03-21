@@ -30,6 +30,9 @@ class Manager:
 
     def event_open(self, uid: int) -> CoworkingStatus:
         return self.db.set_coworking_status(CoworkingStatus.event_open, uid)
+
+    def event_close(self, uid: int) -> CoworkingStatus:
+        return self.db.set_coworking_status(CoworkingStatus.event_closed, uid)
     # endregion
 
 
@@ -78,6 +81,9 @@ class Manager:
 
     def get_responsible_uname(self) -> str:
         return self.db.get_coworking_responsible_uname()
+
+    def get_responsible_uid(self) -> int:
+        return self.db.get_coworking_responsible()
     # endregion
 
     # region Location

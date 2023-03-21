@@ -22,6 +22,7 @@ class CoworkingStatus(enum.IntEnum):
     event_open = 2
     temp_closed = 3
     closed = 4
+    event_closed = 5
 # endregion
 
 
