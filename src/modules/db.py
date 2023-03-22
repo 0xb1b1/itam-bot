@@ -425,16 +425,16 @@ class DBManager:
         return status
 
     def get_coworking_notification_chats(self) -> dict:
-        """Get a dict of all chats (present in ChatSettings table) and their coworking notification status"""
-        return {i.cid: {"notifications_enabled": i.notifications_enabled} for i in self.session.query(ChatSettings).all()}
+        """Get a dict of all chats (present in ChatSettings table) that have notifications enabled"""
+        return [c.cid for c in self.session.query(ChatSettings).filter(ChatSettings.notifications_enabled == True).all()]
+
+    def get_coworking_notification_chats_str(self) -> str:
+        """Get a structured string containing all chats that have notifications enabled"""
+        return "\n".join([f"{i+1}. {c.cid}" for i, c in enumerate(self.get_coworking_notification_chats())])
 
     def get_coworking_notification_enabled_count(self) -> int:
         """Get the number of chats with coworking notifications enabled"""
         return self.session.query(ChatSettings).filter(ChatSettings.notifications_enabled == True).count()
-
-    def get_coworking_notification_chats_str(self) -> str:
-        """Get a structured string containing all chats (present in ChatSettings table) and their coworking notification status"""
-        return "\n".join([f"{i+1}. {c.cid} - {c.notifications_enabled}" for i, c in enumerate(self.session.query(ChatSettings).all())])
 
     # region Admin coworking notifications
     def coworking_notified_admin_closed_during_hours_today(self) -> bool:

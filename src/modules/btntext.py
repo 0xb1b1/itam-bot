@@ -13,8 +13,6 @@ ADMIN_BTN = "🛠️ Управление"
 # Inline admininstration buttons
 INL_ADMIN_EDIT_GROUP = "⚙️ Изменить группу пользователя"
 TRIM_COWORKING_LOG = "🧹 Обрезать лог статусов коворкинга"
-COWORKING_CONTROL = "🔑 Коворкинг"
-COWORKING_CONTROL_SHORT = "🔑 Управление"
 COWORKING_TAKE_RESPONSIBILITY = "🚧 Взять ответственность"
 INL_ADMIN_BROADCAST = "📢 Рассылка"
 INL_COWORKING_STATUS_EXPLAIN = "🤨 Что это?"

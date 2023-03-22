@@ -35,6 +35,8 @@ from modules.db import DBManager            # Operations with sqlite db
 from modules.models import CoworkingStatus  # Coworking status model
 from modules.bot.help import BotHelpFunctions  # Bot help menu functions
 from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related functions
+from modules.bot.scheduled import BotScheduledFunctions  # Bot scheduled functions (recurring)
+from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
 from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
 # endregion
 
@@ -100,8 +102,10 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 # endregion
 
 # region Post-bot-init modules
-bot_help = BotHelpFunctions(bot, db)
-cw = BotCoworkingFunctions(bot, db)
+bot_help = BotHelpFunctions(bot, db, log)
+bot_cw = BotCoworkingFunctions(bot, db, log)
+bot_scheduled = BotScheduledFunctions(bot, db, log)
+bot_broadcast = BotBroadcastFunctions(bot, db, log)
 # endregion
 
 # region Bot state classes
@@ -149,36 +153,6 @@ def get_main_keyboard(message: types.Message) -> InlineKeyboardMarkup:
         mainMenu.add(KeyboardButton(btntext.ADMIN_BTN))
     return ReplyKeyboardRemove() if chat_is_group(message) else mainMenu
 
-async def send_coworking_notifications(is_open: bool, delta_mins: int = 0) -> None:
-    cids = db.get_coworking_notification_chats()
-    for cid in cids:
-        if not cids[cid]["notifications_enabled"]:
-            continue
-        try:
-            await bot.send_message(cid, replies.coworking_status_changed(is_open,
-                                                                         responsible_uname=db.get_coworking_responsible_uname(),
-                                                                         delta_mins=delta_mins))
-        except Exception as exc:
-            log.debug(f'{cid}: DEBUGERR - Failed to send message with error {exc}')
-
-async def broadcast(message: str, scope: str, custom_scope: list = None) -> None:
-    if custom_scope:
-        cids = custom_scope
-    elif scope == 'all':
-        cids = db.get_all_chats()
-    elif scope == 'admins':
-        cids = db.get_admin_chats()
-    elif scope == 'users':
-        cids = db.get_user_chats()
-    else:
-        raise ValueError("Invalid scope")
-    log.debug(f"Broadcasting message to {len(cids)} chats: {cids}")
-    for cid in cids:
-        try:
-            await bot.send_message(cid, message)
-        except Exception as exc:
-            log.debug(f"Failed to send broadcast message to chat {cid}: {exc}")
-
 async def is_group_admin(message: types.Message) -> bool:
     # Check if chat is a group
     if not (message.chat.type == 'group' or message.chat.type == 'supergroup'):
@@ -194,38 +168,6 @@ def conv_call_to_msg(cmessage: Union[types.CallbackQuery, types.Message]) -> typ
     if isinstance(cmessage, types.Message):
         return cmessage
     return cmessage.message
-# endregion
-
-# region Scheduled tasks
-async def coworking_status_checker(open_time: datetime, close_time: datetime, timeout: int = 120):
-    """Check if the coworking space is closed after open_time and open after close_time"""
-    while True:
-        try:
-            # Set open_time and close_time to current date
-            timed = datetime.now()
-            current_time = int(timed.timestamp())
-            open_time_ts = int(open_time.replace(year=timed.year, month=timed.month, day=timed.day).timestamp())
-            close_time_ts = int(close_time.replace(year=timed.year, month=timed.month, day=timed.day).timestamp())
-            if current_time > close_time_ts and coworking.get_status() in [CoworkingStatus.open,
-                                                                           CoworkingStatus.event_open,
-                                                                           CoworkingStatus.temp_closed]:
-                if not coworking.notified_open_after_hours_today():
-                    # Send broadcast to admins
-                    log.debug("Sending broadcast to admins about coworking space being open after hours")
-                    await broadcast(replies.coworking_open_after_hours(), scope="admins")
-                else:
-                    log.debug(f"NOT sending broadcast to admins (closed after open time); {coworking.notified_closed_during_hours_today()=}")
-            # Check if the coworking space is closed after open_time
-            # elif current_time <= open_time_ts and coworking.get_status() == CoworkingStatus.closed:
-            #     if not coworking.opened_today() and not coworking.notified_closed_during_hours_today():
-            #         # Send broadcast to admins
-            #         log.debug("Sending broadcast to admins about coworking space being closed during hours")
-            #         await broadcast(replies.coworking_closed_during_hours(), scope="admins")
-            # Sleep for the specified amount of time before running again
-            await asyncio.sleep(timeout)
-        except Exception as exc:
-            log.error(f"Error in coworking_status_checker: {exc}")
-            await asyncio.sleep(timeout)
 # endregion
 
 # region Bot replies
@@ -314,22 +256,10 @@ async def admin_panel(message: types.Message) -> None:
     """Send admin panel"""
     inlAdminChangeGroupBtn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP, callback_data='change_user_group')
     inlAdminBroadcastBtn = InlineKeyboardButton(btntext.INL_ADMIN_BROADCAST, callback_data='admin:broadcast')
-    inlCoworkingControlBtn = InlineKeyboardButton(btntext.COWORKING_CONTROL, callback_data='coworking_control')
     markup = InlineKeyboardMarkup().add(inlAdminChangeGroupBtn,
-                                        inlAdminBroadcastBtn,
-                                        inlCoworkingControlBtn)
+                                        inlAdminBroadcastBtn)
     await message.answer(replies.admin_panel(coworking.get_status()), reply_markup=markup)
     log.info(f"User {message.from_user.id} opened the admin panel")
-
-@dp.callback_query_handler(admin_only, lambda c: c.data == 'coworking_control')
-@dp.message_handler(admin_only, commands=['cwcontrol'])
-async def coworking_control(cmessage: types.Message) -> None:
-    """Send coworking control panel"""
-    cw_status = coworking.get_status()
-    markup = cw.get_admin_markup(cmessage)
-    await conv_call_to_msg(cmessage).answer(replies.coworking_control(cw_status,
-                                                                     coworking.get_responsible_uname()),
-                                           reply_markup=markup)
 
 # region Coworking administration
 @dp.callback_query_handler(lambda c: c.data == 'trim_coworking_status_log')
@@ -352,64 +282,62 @@ async def coworking_take_responsibility(cmessage: Union[types.CallbackQuery, typ
     await message.answer(replies.coworking_status_now_responsible())
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:open')
-@dp.message_handler(admin_only, commands=['coworking_open'])
-async def coworking_open(message: types.Message) -> None:
+async def coworking_open(call: types.CallbackQuery) -> None:
     """Set coworking status to open"""
-    # If the type is message, deny access to group chats
-    if isinstance(message, types.Message) and message.chat.type != 'private':
-        await message.answer(replies.permission_denied())
+    # If the call is not from a private conversation, deny access
+    if call.message.chat.type != 'private':
+        await call.answer(replies.permission_denied())
         return
     # Check if the user is permitted to mutate coworking status
-    if not coworking.is_trusted(message.from_user.id):
-        await message.answer(replies.permission_denied())
+    if not coworking.is_trusted(call.from_user.id):
+        await call.answer(replies.permission_denied())
         return
     if coworking.get_status() == CoworkingStatus.open:
-        await conv_call_to_msg(message).answer("Коворкинг уже открыт")
+        await call.answer("Коворкинг уже открыт")
         return
-    coworking.open(message.from_user.id)
-    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.open))
-    await conv_call_to_msg(message).answer("Коворкинг теперь открыт")
-    log.info(f"Coworking opened by {message.from_user.id}")
+    coworking.open(call.from_user.id)
+    asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.open))
+    await call.answer("Коворкинг теперь открыт")
+    log.info(f"Coworking opened by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:close')
-@dp.message_handler(admin_only, commands=['coworking_close'])
-async def coworking_close(message: types.Message) -> None:
+async def coworking_close(call: types.CallbackQuery) -> None:
     """Set coworking status to closed"""
-    # If the type is message, deny access to group chats
-    if isinstance(message, types.Message) and message.chat.type != 'private':
-        await message.answer(replies.permission_denied())
+    # If the call is not from a private conversation, deny access
+    if call.message.chat.type != 'private':
+        await call.answer(replies.permission_denied())
         return
     # Check if the user is permitted to mutate coworking status
-    if not coworking.is_trusted(message.from_user.id):
-        await message.answer(replies.permission_denied())
+    if not coworking.is_trusted(call.from_user.id):
+        await call.answer(replies.permission_denied())
         return
     if coworking.get_status() == CoworkingStatus.closed:
-        await conv_call_to_msg(message).answer("Коворкинг уже закрыт")
+        await call.answer("Коворкинг уже закрыт")
         return
-    coworking.close(message.from_user.id)
-    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.closed))
-    await conv_call_to_msg(message).answer("Коворкинг теперь закрыт")
-    log.info(f"Coworking closed by {message.from_user.id}")
+    coworking.close(call.from_user.id)
+    asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.closed))
+    await call.answer("Коворкинг теперь закрыт")
+    log.info(f"Coworking closed by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:temp_close')
-@dp.message_handler(admin_only, commands=['coworking_temp_close'])
-async def coworking_temp_close_stage0(message: types.Message, state: FSMContext) -> None:
+async def coworking_temp_close_stage0(call: types.CallbackQuery, state: FSMContext) -> None:
     """Set coworking status to temporarily closed"""
-    # If the type is message, deny access to group chats
-    if isinstance(message, types.Message) and message.chat.type != 'private':
-        await message.answer(replies.permission_denied())
+    # If the call is not from a private conversation, deny access
+    if call.message.chat.type != 'private':
+        await call.answer(replies.permission_denied())
         return
     # Check if the user is permitted to mutate coworking status
-    if not coworking.is_trusted(message.from_user.id):
-        await message.answer(replies.permission_denied())
+    if not coworking.is_trusted(call.from_user.id):
+        await call.answer(replies.permission_denied())
         return
     if coworking.get_status() == CoworkingStatus.temp_closed:
-        await conv_call_to_msg(message).answer(f"Коворкинг уже временно закрыт\n\n{replies.cancel_action()}")
+        await call.answer(f"Коворкинг уже временно закрыт\n\n{replies.cancel_action()}")
         return
     # Set AdminCoworkingTempCloseFlow state
     await state.set_state(AdminCoworkingTempCloseFlow.delta.state)
-    await conv_call_to_msg(message).answer(f"На какое время закрыть коворкинг? (в минутах; можно ввести любое целое число)\n\n{replies.cancel_action()}",
-                        reply_markup=nav.coworkingTempCloseDeltaMenu)
+    await bot.send_message(call.from_user.id,
+                           f"На какое время закрыть коворкинг? (в минутах; можно ввести любое целое число)\n\n{replies.cancel_action()}",
+                           reply_markup=nav.coworkingTempCloseDeltaMenu)
 
 @dp.message_handler(admin_only, state=AdminCoworkingTempCloseFlow.delta.state)
 async def coworking_temp_close_stage1(message: types.Message, state: FSMContext) -> None:
@@ -453,51 +381,49 @@ async def coworking_temp_close_stage2(message: types.Message, state: FSMContext)
     delta: int = data['delta']
     # Temporarily close coworking
     coworking.temp_close(message.from_user.id, delta_mins=delta)
-    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.temp_closed, delta_mins=delta))
+    asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.temp_closed, delta_mins=delta))
     await message.answer("Коворкинг теперь временно закрыт",
                         reply_markup=get_main_keyboard(message))
     log.info(f"Coworking temporarily closed by {message.from_user.id} for {delta} minutes")
     await state.finish()
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:event_open')
-@dp.message_handler(admin_only, commands=['coworking_event_open'])
-async def coworking_event_open(message: Union[types.Message, types.CallbackQuery]) -> None:
+async def coworking_event_open(call: types.CallbackQuery) -> None:
     """Set coworking status to opened for an event"""
-    # If the type is message, deny access to group chats
-    if isinstance(message, types.Message) and message.chat.type != 'private':
-        await message.answer(replies.permission_denied())
+    # If the call is not from a private conversation, deny access
+    if call.message.chat.type != 'private':
+        await call.answer(replies.permission_denied())
         return
     # Check if the user is permitted to mutate coworking status
-    if not coworking.is_trusted(message.from_user.id):
-        await message.answer(replies.permission_denied())
+    if not coworking.is_trusted(call.from_user.id):
+        await call.answer(replies.permission_denied())
         return
     if coworking.get_status() == CoworkingStatus.event_open:
-        await conv_call_to_msg(message).answer("Коворкинг уже открыт (с предупреждением о проведении мероприятия)")
+        await call.answer("Коворкинг уже открыт (с предупреждением о проведении мероприятия)")
         return
-    coworking.event_open(message.from_user.id)
-    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.event_open))
-    await conv_call_to_msg(message).answer("Коворкинг теперь открыт (с предупреждением о проведении мероприятия)")
-    log.info(f"Coworking opened for an event by {message.from_user.id}")
+    coworking.event_open(call.from_user.id)
+    asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.event_open))
+    await call.answer("Коворкинг теперь открыт (с предупреждением о проведении мероприятия)")
+    log.info(f"Coworking opened for an event by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:event_close')
-@dp.message_handler(admin_only, commands=['coworking_event_close'])
-async def coworking_event_close(message: Union[types.Message, types.CallbackQuery]) -> None:
+async def coworking_event_close(call: types.CallbackQuery) -> None:
     """Set coworking status to closed for an event"""
-    # If the type is message, deny access to group chats
-    if isinstance(message, types.Message) and message.chat.type != 'private':
-        await message.answer(replies.permission_denied())
+    # If the call is not from a private conversation, deny access
+    if call.message.chat.type != 'private':
+        await call.answer(replies.permission_denied())
         return
     # Check if the user is permitted to mutate coworking status
-    if not coworking.is_trusted(message.from_user.id):
-        await message.answer(replies.permission_denied())
+    if not coworking.is_trusted(call.from_user.id):
+        await call.answer(replies.permission_denied())
         return
     if coworking.get_status() == CoworkingStatus.event_closed:
-        await conv_call_to_msg(message).answer("Коворкинг уже закрыт на мероприятие")
+        await call.answer("Коворкинг уже закрыт на мероприятие")
         return
-    coworking.event_close(message.from_user.id)
-    asyncio.get_event_loop().create_task(send_coworking_notifications(CoworkingStatus.event_closed))
-    await conv_call_to_msg(message).answer("Коворкинг теперь закрыт на мероприятие")
-    log.info(f"Coworking closed for an event by {message.from_user.id}")
+    coworking.event_close(call.from_user.id)
+    asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.event_closed))
+    await call.answer("Коворкинг теперь закрыт на мероприятие")
+    log.info(f"Coworking closed for an event by {call.from_user.id}")
 
 @dp.message_handler(admin_only, commands=['get_coworking_status_log'])
 async def get_coworking_status_log(message: types.Message) -> None:
@@ -553,7 +479,7 @@ async def admin_broadcast_stage3(message: types.Message, state: FSMContext) -> N
         await state.finish()
         return
     # Send broadcast
-    asyncio.get_event_loop().create_task(broadcast(state_data['message'], scope))
+    asyncio.get_event_loop().create_task(bot_broadcast.broadcast(state_data['message'], scope))
     log.info(f"Admin {message.from_user.id} broadcasted message to scope {scope}\nMessage:\n\"\"\"\n{state_data['message']}\n\"\"\"")
     await message.answer(replies.broadcast_successful(),
                          reply_markup=get_main_keyboard(message))
@@ -793,10 +719,8 @@ async def coworking_status_reply(message: types.Message) -> None:
     if chat_is_group(message):
         await message.answer(replies.coworking_status_only_in_pm())
         return
-    inlCoworkingControlBtn = InlineKeyboardButton(btntext.COWORKING_CONTROL_SHORT, callback_data='coworking_control')
     if db.is_admin(message.from_user.id):
-        inlCoworkingControlMenu = cw.get_admin_markup(message)
-        inlCoworkingControlMenu.add(inlCoworkingControlBtn)
+        inlCoworkingControlMenu = bot_cw.get_admin_markup(message)
     else:
         inlCoworkingControlMenu = InlineKeyboardMarkup()
     are_notifications_on = db.get_coworking_notifications(message.chat.id)
@@ -865,9 +789,9 @@ async def answer(message: types.Message) -> None:
 # region StartUp
 def run() -> None:
     loop = asyncio.get_event_loop()
-    loop.create_task(coworking_status_checker(datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_OPENING_TIME", "09:00:00")}', '%Y-%m-%d %H:%M:%S'),
-                                              datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_CLOSING_TIME", "19:00:00")}', '%Y-%m-%d %H:%M:%S'),
-                                              timeout=int(os.getenv('WORKERS_SLEEP_TIMEOUT', '20'))))
+    loop.create_task(bot_scheduled.coworking_status_checker(datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_OPENING_TIME", "09:00:00")}', '%Y-%m-%d %H:%M:%S'),
+                                                            datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_CLOSING_TIME", "19:00:00")}', '%Y-%m-%d %H:%M:%S'),
+                                                            timeout=int(os.getenv('COWORKING_STATUS_WORKER_TIMEOUT', '120'))))
     log.info('Starting AIOgram...')
     executor.start_polling(dp, skip_updates=True)
     log.info('AIOgram stopped successfully')
