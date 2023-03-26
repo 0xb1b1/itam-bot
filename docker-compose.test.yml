@@ -40,7 +40,5 @@ services:
   #     - "23439:80"
   #   volumes:
   #     - ./docker/pgadmin:/var/lib/pgadmin
-  #   networks:
-  #     - itambot-network
   #   depends_on:
   #     - db

@@ -39,7 +39,6 @@ class DBManager:
         """Close the database connection when the object is destroyed"""
         self._close()
 
-
     # region Connection setup
     def _connect(self) -> None:
         """Connect to the postgresql database"""
@@ -198,6 +197,10 @@ class DBManager:
         users = self.session.query(User).all()
         return "\n".join([f"{i+1}. [{u.first_name} {u.last_name if u.last_name else ''}] @{u.uname if u.uname else '—'} [{u.uid}] ({self.get_group_name(u.gid)})" for i, u in enumerate(users)])
 
+    def get_admins(self) -> List[User]:
+        """Get a list of admins"""
+        return self.session.query(User).filter(User.gid == GroupType.admins).all()
+
     def get_coworking_log(self) -> List[Coworking]:
         return self.session.query(Coworking).all()
 
@@ -280,19 +283,44 @@ class DBManager:
         self.session.commit()
         return (first_name, last_name)
 
-    def set_user_data_first_name(self, uid: int, first_name: str) -> str:
+    def set_user_first_name(self, uid: int, first_name: str) -> str:
         """Set the first name of a user"""
         user = self.session.query(User).filter(User.uid == uid).first()
         user.first_name = first_name
         self.session.commit()
         return first_name
 
-    def set_user_data_last_name(self, uid: int, last_name: str) -> str:
+    def set_user_last_name(self, uid: int, last_name: str) -> str:
         """Set the last name of a user"""
         user = self.session.query(User).filter(User.uid == uid).first()
         user.last_name = last_name
         self.session.commit()
         return last_name
+
+    def set_user_birthday(self, uid: int, birthday: date) -> datetime:
+        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user.birthday = birthday
+        self.session.commit()
+        return birthday
+
+    def set_user_email(self, uid: int, email: str) -> str:
+        # Check if at least one @ or . appears in the email
+        if "@" not in email or "." not in email:
+            raise ValueError("Incorrect email format")
+        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user.email = email
+        self.session.commit()
+        return email
+
+    def set_user_phone(self, uid: int, phone: int) -> int:
+        if not 5 < len(str(phone)) < 20 or phone[0] == '-':
+            raise ValueError("Incorrent phone format")
+        # Check if phone is of type int
+        int(phone)
+        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user.phone = phone
+        self.session.commit()
+        return phone
 
     def set_user_data_phone(self, uid: int, phone: str) -> str:
         """Set the phone number of a user"""

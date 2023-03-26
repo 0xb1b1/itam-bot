@@ -9,7 +9,6 @@ import os
 import logging                               # Logging events
 import asyncio                               # Asynchronous sleep()
 from datetime import datetime
-# from xmlrpc.client import Boolean            # Subscription checks
 from typing import Optional, Union
 from aiogram import Bot, Dispatcher          # Telegram bot API
 from aiogram import executor, types          # Telegram API
@@ -26,6 +25,7 @@ from sqlalchemy.exc import DataError
 
 # endregion
 # region Local dependencies
+import modules.bot.tools as bot_tools           # Bot tools
 from modules import markup as nav           # Bot menus
 from modules import btntext                 # Telegram bot button text
 from modules import replies                 # Telegram bot information output
@@ -127,6 +127,9 @@ class UserEditProfile(StatesGroup):
     selector = State()
     first_name = State()
     last_name = State()
+    birthday = State()
+    email = State()
+    phone = State()
 # endregion
 
 
@@ -152,27 +155,11 @@ def get_main_keyboard(message: types.Message) -> InlineKeyboardMarkup:
     if db.is_admin(message.from_user.id):
         mainMenu.add(KeyboardButton(btntext.ADMIN_BTN))
     return ReplyKeyboardRemove() if chat_is_group(message) else mainMenu
-
-async def is_group_admin(message: types.Message) -> bool:
-    # Check if chat is a group
-    if not (message.chat.type == 'group' or message.chat.type == 'supergroup'):
-        return True
-    # Check if the user is a group admin
-    administrators = await message.chat.get_administrators()
-    administrators = [adm['user']['id'] for adm in administrators]
-    if not message.from_user.id in administrators:
-        return False
-    return True
-
-def conv_call_to_msg(cmessage: Union[types.CallbackQuery, types.Message]) -> types.Message:
-    if isinstance(cmessage, types.Message):
-        return cmessage
-    return cmessage.message
 # endregion
 
 # region Bot replies
 @dp.message_handler(debug_dec, CommandStart())
-async def send_welcome(message: types.Message) -> None:
+async def bot_send_welcome(message: types.Message) -> None:
     """Send welcome message and init user's record in DB"""
     await message.answer(replies.welcome_message(message.from_user.first_name),
                         reply_markup=get_main_keyboard(message))
@@ -185,7 +172,7 @@ async def send_welcome(message: types.Message) -> None:
 @dp.callback_query_handler(lambda c: c.data == 'cancel', state='*')
 @dp.message_handler(state='*', commands=['cancel'])
 @dp.message_handler(lambda message: message.text.lower() == 'cancel' or message.text.lower() == btntext.CANCEL.lower(), state='*')
-async def cancel_handler(cmessage: Union[types.Message, types.CallbackQuery], state: FSMContext):
+async def bot_cancel_handler(cmessage: Union[types.Message, types.CallbackQuery], state: FSMContext):
     """Allow user to cancel any action"""
     log.debug(f"User {cmessage.from_user.id} canceled an action")
     # Cancel state and inform user about it
@@ -229,30 +216,29 @@ async def get_users_verbose(message: types.Message) -> None:
 # region Coworking notifications (user control)
 @dp.callback_query_handler(lambda c: c.data == 'coworking:toggle_notifications', state='*')
 @dp.message_handler(commands=['notify'])
-async def notify(message: types.Message) -> None:
+async def bot_notify(message: Union[types.Message, types.CallbackQuery]) -> None:
     """Turn on notifications for a given chat ID"""
-    message = conv_call_to_msg(message)
-    is_grp_admin = await is_group_admin(message)
+    message = bot_tools.conv_call_to_msg(message)
+    is_grp_admin = await bot_tools.is_group_admin(message)
     if not is_grp_admin:
         await message.answer(replies.permission_denied())
         return
     current_status = db.toggle_coworking_notifications(message.chat.id)
-    message = conv_call_to_msg(message)
     await message.answer(replies.coworking_notifications_on() if current_status else replies.coworking_notifications_off())
 
 @dp.message_handler(commands=['notify_status'])
-async def notify_status(message: types.Message) -> None:
+async def bot_notify_status(message: types.Message) -> None:
     """Get notification status for a given chat ID"""
     if db.get_coworking_notifications(message.chat.id):
         await message.answer(replies.coworking_notifications_on())
-    else:
-        await message.answer(replies.coworking_notifications_off())
+        return
+    await message.answer(replies.coworking_notifications_off())
 # endregion
 
 # region Administration
 @dp.message_handler(admin_only, lambda message: message.text == btntext.ADMIN_BTN)
 @dp.message_handler(admin_only, commands=['admin'])
-async def admin_panel(message: types.Message) -> None:
+async def bot_admin_panel(message: types.Message) -> None:
     """Send admin panel"""
     inlAdminChangeGroupBtn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP, callback_data='change_user_group')
     inlAdminBroadcastBtn = InlineKeyboardButton(btntext.INL_ADMIN_BROADCAST, callback_data='admin:broadcast')
@@ -262,27 +248,24 @@ async def admin_panel(message: types.Message) -> None:
     log.info(f"User {message.from_user.id} opened the admin panel")
 
 # region Coworking administration
-@dp.callback_query_handler(lambda c: c.data == 'trim_coworking_status_log')
-@dp.message_handler(admin_only, commands=['trim_coworking_status_log'])
-async def trim_coworking_status_log(message: Union[types.CallbackQuery, types.Message]) -> None:
+@dp.callback_query_handler(lambda c: c.data == 'coworking:trim_log')
+async def bot_trim_coworking_status_log(call: types.CallbackQuery) -> None:
     """Trim coworking log"""
     limit = 10 # TODO: make this configurable
     coworking.trim_log(limit=limit)
-    await conv_call_to_msg(message).answer(f"Лог статуса коворкинга урезан; последние {limit} записей сохранены")
+    await call.answer(f"Лог статуса коворкинга урезан; последние {limit} записей сохранены")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:take_responsibility')
-async def coworking_take_responsibility(cmessage: Union[types.CallbackQuery, types.Message]) -> None:
+async def bot_coworking_take_responsibility(call: types.CallbackQuery) -> None:
     """Take responsibility for coworking status"""
-
-    message = conv_call_to_msg(cmessage)
-    if coworking.is_responsible(cmessage.from_user.id):
-        await message.answer(replies.coworking_status_already_responsible())
+    if coworking.is_responsible(call.from_user.id):
+        await call.answer(replies.coworking_status_already_responsible())
         return
-    db.coworking_status_set_uid_responsible(cmessage.from_user.id)
-    await message.answer(replies.coworking_status_now_responsible())
+    db.coworking_status_set_uid_responsible(call.from_user.id)
+    await call.answer(replies.coworking_status_now_responsible())
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:open')
-async def coworking_open(call: types.CallbackQuery) -> None:
+async def bot_coworking_open(call: types.CallbackQuery) -> None:
     """Set coworking status to open"""
     # If the call is not from a private conversation, deny access
     if call.message.chat.type != 'private':
@@ -301,7 +284,7 @@ async def coworking_open(call: types.CallbackQuery) -> None:
     log.info(f"Coworking opened by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:close')
-async def coworking_close(call: types.CallbackQuery) -> None:
+async def bot_coworking_close(call: types.CallbackQuery) -> None:
     """Set coworking status to closed"""
     # If the call is not from a private conversation, deny access
     if call.message.chat.type != 'private':
@@ -320,7 +303,7 @@ async def coworking_close(call: types.CallbackQuery) -> None:
     log.info(f"Coworking closed by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:temp_close')
-async def coworking_temp_close_stage0(call: types.CallbackQuery, state: FSMContext) -> None:
+async def bot_coworking_temp_close_stage0(call: types.CallbackQuery, state: FSMContext) -> None:
     """Set coworking status to temporarily closed"""
     # If the call is not from a private conversation, deny access
     if call.message.chat.type != 'private':
@@ -340,7 +323,7 @@ async def coworking_temp_close_stage0(call: types.CallbackQuery, state: FSMConte
                            reply_markup=nav.coworkingTempCloseDeltaMenu)
 
 @dp.message_handler(admin_only, state=AdminCoworkingTempCloseFlow.delta.state)
-async def coworking_temp_close_stage1(message: types.Message, state: FSMContext) -> None:
+async def bot_coworking_temp_close_stage1(message: types.Message, state: FSMContext) -> None:
     """Set coworking status to temporarily closed"""
     if coworking.get_status() == CoworkingStatus.temp_closed:
         await message.answer(f"Коворкинг уже временно закрыт\n\n{replies.cancel_action()}")
@@ -366,7 +349,7 @@ async def coworking_temp_close_stage1(message: types.Message, state: FSMContext)
     await message.answer("Подтвердите введенные данные", reply_markup=nav.confirmMenu)
 
 @dp.message_handler(admin_only, state=AdminCoworkingTempCloseFlow.confirm.state)
-async def coworking_temp_close_stage2(message: types.Message, state: FSMContext) -> None:
+async def bot_coworking_temp_close_stage2(message: types.Message, state: FSMContext) -> None:
     """Set coworking status to temporarily closed"""
     if coworking.get_status() == CoworkingStatus.temp_closed:
         await message.answer(f"Коворкинг уже временно закрыт\n\n{replies.cancel_action()}")
@@ -388,7 +371,7 @@ async def coworking_temp_close_stage2(message: types.Message, state: FSMContext)
     await state.finish()
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:event_open')
-async def coworking_event_open(call: types.CallbackQuery) -> None:
+async def bot_coworking_event_open(call: types.CallbackQuery) -> None:
     """Set coworking status to opened for an event"""
     # If the call is not from a private conversation, deny access
     if call.message.chat.type != 'private':
@@ -407,7 +390,7 @@ async def coworking_event_open(call: types.CallbackQuery) -> None:
     log.info(f"Coworking opened for an event by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:event_close')
-async def coworking_event_close(call: types.CallbackQuery) -> None:
+async def bot_coworking_event_close(call: types.CallbackQuery) -> None:
     """Set coworking status to closed for an event"""
     # If the call is not from a private conversation, deny access
     if call.message.chat.type != 'private':
@@ -426,12 +409,12 @@ async def coworking_event_close(call: types.CallbackQuery) -> None:
     log.info(f"Coworking closed for an event by {call.from_user.id}")
 
 @dp.message_handler(admin_only, commands=['get_coworking_status_log'])
-async def get_coworking_status_log(message: types.Message) -> None:
+async def bot_get_coworking_status_log(message: types.Message) -> None:
     """Get coworking status log"""
     await message.answer(coworking.get_log_str())
 
 @dp.message_handler(admin_only, commands=['update_admin_kb'])
-async def update_admin_kb(message: types.Message) -> None:
+async def bot_update_admin_kb(message: types.Message) -> None:
     """Update admin menu"""
     admins = db.get_admin_chats()
     for admin in admins:
@@ -444,25 +427,25 @@ async def update_admin_kb(message: types.Message) -> None:
 # region Broadcast
 @dp.callback_query_handler(lambda c: c.data == 'admin:broadcast')
 @dp.message_handler(admin_only, commands=['broadcast'])
-async def admin_broadcast_stage0(message: types.Message, state: FSMContext) -> None:
+async def bot_admin_broadcast_stage0(message: types.Message, state: FSMContext) -> None:
     await message.answer(f"Введите текст для рассылки\n\n{replies.cancel_action()}")
     await state.set_state(AdminBroadcast.message.state)
 
 @dp.message_handler(admin_only, state=AdminBroadcast.message.state)
-async def admin_broadcast_stage1(message: types.Message, state: FSMContext) -> None:
+async def bot_admin_broadcast_stage1(message: types.Message, state: FSMContext) -> None:
     await state.update_data(message=message.text)
     await message.answer(f"Выберите ширину рассылки\n\n{replies.cancel_action()}", reply_markup=nav.adminBroadcastScopeMenu)
     await state.set_state(AdminBroadcast.scope.state)
 
 @dp.message_handler(admin_only, state=AdminBroadcast.scope.state)
-async def admin_broadcast_stage2(message: types.Message, state: FSMContext) -> None:
+async def bot_admin_broadcast_stage2(message: types.Message, state: FSMContext) -> None:
     await state.update_data(scope=message.text)
     state_data = await state.get_data()
     await message.answer(f"Подтвердите рассылку\nТекст рассылки:\n\"\"\"{state_data['message']}\"\"\"\n\n{replies.cancel_action()}", reply_markup=nav.confirmMenu)
     await state.set_state(AdminBroadcast.confirm.state)
 
 @dp.message_handler(admin_only, state=AdminBroadcast.confirm.state)
-async def admin_broadcast_stage3(message: types.Message, state: FSMContext) -> None:
+async def bot_admin_broadcast_stage3(message: types.Message, state: FSMContext) -> None:
     # Check if user confirmed the broadcast
     if message.text != btntext.CONFIRM:
         message.answer("Рассылка отменена")
@@ -487,13 +470,13 @@ async def admin_broadcast_stage3(message: types.Message, state: FSMContext) -> N
 # endregion
 
 @dp.callback_query_handler(lambda c: c.data == 'change_user_group')
-async def change_user_group_stage0(call: types.CallbackQuery, state: FSMContext) -> None:
+async def bot_change_user_group_stage0(call: types.CallbackQuery, state: FSMContext) -> None:
     """Change user group, stage 0"""
     await state.set_state(AdminChangeUserGroup.user_id.state)
     await call.message.edit_text(f"Введите ID пользователя\n\n{replies.cancel_action()}")
 
 @dp.message_handler(state=AdminChangeUserGroup.user_id)
-async def change_user_group_stage1(message: types.Message, state: FSMContext) -> None:
+async def bot_change_user_group_stage1(message: types.Message, state: FSMContext) -> None:
     """Change user group, stage 1"""
     user_id = message.text
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -504,7 +487,7 @@ async def change_user_group_stage1(message: types.Message, state: FSMContext) ->
     await state.set_state(AdminChangeUserGroup.group_id.state)  # Also accepted: await AdminChangeUserGroup.next()
 
 @dp.message_handler(state=AdminChangeUserGroup.group_id)
-async def change_user_group_stage2(message: types.Message, state: FSMContext) -> None:
+async def bot_change_user_group_stage2(message: types.Message, state: FSMContext) -> None:
     """Change user group, stage 2"""
     state_data = await state.get_data()
     user_id = state_data['user_id']
@@ -529,31 +512,30 @@ async def change_user_group_stage2(message: types.Message, state: FSMContext) ->
     await state.finish()
 
 @dp.message_handler(admin_only, commands=['get_notif_db'])
-async def get_notif_db(message: types.Message) -> None:
+async def bot_get_notif_db(message: types.Message) -> None:
     """Get notification database"""
     await message.answer(db.get_coworking_notification_chats_str())
 
 @dp.message_handler(admin_only, commands=['stats'])
-async def get_stats(message: types.Message) -> None:
+async def bot_get_stats(message: types.Message) -> None:
     """Get stats"""
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG, callback_data="trim_coworking_status_log"))
-    await message.answer(replies.stats(db.get_stats()), reply_markup=markup)
+    mkup = InlineKeyboardMarkup().add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG, callback_data="coworking:trim_log"))
+    await message.answer(replies.stats(db.get_stats()), reply_markup=mkup)
 # endregion
 
 # region User Data
 @dp.message_handler(commands=['bio'])
-async def user_data_get_bio(message: types.Message) -> None:
+async def bot_user_data_get_bio(message: types.Message) -> None:
     """Get user bio"""
     await message.answer(db.get_user_data_bio(message.from_user.id))
 
 @dp.message_handler(commands=['resume'])
-async def user_data_get_resume(message: types.Message) -> None:
+async def bot_user_data_get_resume(message: types.Message) -> None:
     """Get user resume"""
     await message.answer(db.get_user_data_resume(message.from_user.id))
 
 @dp.callback_query_handler(lambda c: c.data == 'edit_profile')
-async def edit_profile(call: types.CallbackQuery, state: FSMContext, secondary_run: bool = False) -> None:
+async def bot_edit_profile(call: types.CallbackQuery, state: FSMContext, secondary_run: bool = False) -> None:
     """Edit user profile"""
     short_user_data = db.get_user_data_short(call.from_user.id)
     fields = list(short_user_data.keys())
@@ -572,14 +554,17 @@ async def edit_profile(call: types.CallbackQuery, state: FSMContext, secondary_r
                                replies.profile_info(db.get_user_data_short(call.from_user.id)),
                                reply_markup=keyboard)
     await state.set_state(UserEditProfile.selector)
-    await state.update_data(first_name=short_user_data['first_name'], last_name=short_user_data['last_name'])
+    await state.update_data(first_name=short_user_data['first_name'],
+                            last_name=short_user_data['last_name'],
+                            birthday=short_user_data['birthday'],
+                            email=short_user_data['email'],
+                            phone=short_user_data['phone'])
 
     await call.message.answer("Что изменим?", reply_markup=nav.inlCancelMenu)
 
 @dp.callback_query_handler(state=UserEditProfile.selector)
-async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> None:
+async def bot_edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> None:
     """Edit user profile - select action"""
-    # Get field name
     await call.answer()
     state_data = await state.get_data()
     fn = lambda x: f'edit_profile_{x}'
@@ -593,24 +578,74 @@ async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> N
                                replies.profile_edit_last_name(state_data['first_name'],
                                                               state_data['last_name']))
         await state.set_state(UserEditProfile.last_name)
+    elif call.data == fn('birthday'):
+        await bot.send_message(call.from_user.id,
+                               replies.profile_edit_birthday(state_data['birthday']))
+        await state.set_state(UserEditProfile.birthday)
+    elif call.data == fn('email'):
+        await bot.send_message(call.from_user.id,
+                               replies.profile_edit_email(state_data['email']))
+        await state.set_state(UserEditProfile.email)
+    elif call.data == fn('phone'):
+        await bot.send_message(call.from_user.id,
+                               replies.profile_edit_phone(state_data['phone']))
+        await state.set_state(UserEditProfile.phone)
     else:
-        await bot.send_message(call.from_user.id, "Field is not editable yet")
+        await bot.send_message(call.from_user.id, f"Field is not editable yet: {call.data}")
 
 @dp.message_handler(state=UserEditProfile.first_name)
-async def edit_profile_first_name(message: types.Message, state: FSMContext) -> None:
+async def bot_edit_profile_first_name(message: types.Message, state: FSMContext):
     """Edit user profile first name"""
-    state_data = await state.get_data()
+    #state_data = await state.get_data()
     await state.update_data(first_name=message.text)
-    db.set_user_data_first_name(message.from_user.id, message.text)
+    db.set_user_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_edit_success())
     await state.finish()
 
 @dp.message_handler(state=UserEditProfile.last_name)
-async def edit_profile_last_name(message: types.Message, state: FSMContext) -> None:
+async def bot_edit_profile_last_name(message: types.Message, state: FSMContext):
     """Edit user profile last name"""
-    state_data = await state.get_data()
-    await state.update_data(first_name=message.text)
-    db.set_user_data_last_name(message.from_user.id, message.text)
+    #state_data = await state.get_data()
+    await state.update_data(last_name=message.text)
+    db.set_user_last_name(message.from_user.id, message.text)
+    await message.answer(replies.profile_edit_success())
+    await state.finish()
+
+@dp.message_handler(state=UserEditProfile.birthday)
+async def bot_edit_profile_birthday(message: types.Message, state: FSMContext):
+    """Edit user profile date of birth"""
+    #state_data = await state.get_data()
+    try:
+        birthday = datetime.strptime(message.text, "%d.%m.%Y")
+    except ValueError:
+        await message.answer(replies.invalid_date_try_again())
+        return
+    await state.update_data(birthday=birthday)
+    db.set_user_birthday(message.from_user.id, birthday)
+    await message.answer(replies.profile_edit_success())
+    await state.finish()
+
+@dp.message_handler(state=UserEditProfile.email)
+async def bot_edit_profile_email(message: types.Message, state: FSMContext):
+    """Edit user profile email"""
+    #state_data = await state.get_data()
+    try:
+        db.set_user_email(message.from_user.id, message.text)
+    except ValueError:
+        await message.answer(replies.invalid_email_try_again())
+        return
+    await message.answer(replies.profile_edit_success())
+    await state.finish()
+
+@dp.message_handler(state=UserEditProfile.phone)
+async def bot_edit_profile_phone(message: types.Message, state: FSMContext):
+    """Edit user profile phone"""
+    #state_data = await state.get_data()
+    try:
+        db.set_user_phone(message.from_user.id, message.text)
+    except ValueError:
+        await message.answer(replies.invalid_phone_try_again())
+        return
     await message.answer(replies.profile_edit_success())
     await state.finish()
 # endregion
@@ -619,7 +654,7 @@ async def edit_profile_last_name(message: types.Message, state: FSMContext) -> N
 @dp.message_handler(groups_only, commands=['plaintext'])
 async def plaintext_answers_toggle(message: types.Message):
     """Toggle plaintext answers boolean in database"""
-    is_grp_admin = await is_group_admin(message)
+    is_grp_admin = await bot_tools.is_group_admin(message)
     if not is_grp_admin:
         if not db.is_admin(message.from_user.id):
             await message.answer(replies.permission_denied())
@@ -658,7 +693,7 @@ async def plaintext_answers_toggle_for_chat(message: types.Message):
 # endregion
 
 # region Club information
-@dp.callback_query_handler(lambda c: c.data in [i+'_club_info' for i in ['ctf', 'hackathon', 'design', 'gamedev', 'robotics', 'ml']])
+@dp.callback_query_handler(lambda c: c.data in [i+'_club_info' for i in ['ctf', 'hackathon', 'design', 'gamedev', 'robotics']])
 async def club_info(call: types.CallbackQuery) -> None:
     """Club info"""
     await call.answer()
@@ -685,10 +720,10 @@ async def club_info(call: types.CallbackQuery) -> None:
             await call.message.edit_text(replies.robotics_club_info(),
                                         reply_markup=nav.inlClubsMenu,
                                         parse_mode=ParseMode.MARKDOWN)
-        elif club == 'ml':
-            await call.message.edit_text(replies.ml_club_info(),
-                                        reply_markup=nav.inlClubsMenu,
-                                        parse_mode=ParseMode.MARKDOWN)
+        # elif club == 'ml':
+        #     await call.message.edit_text(replies.ml_club_info(),
+        #                                 reply_markup=nav.inlClubsMenu,
+        #                                 parse_mode=ParseMode.MARKDOWN)
     except exceptions.MessageNotModified:
         log.debug(f"User {call.from_user.id} tried to request the same club info ({club})")
 # endregion
@@ -704,7 +739,7 @@ async def credits(call: types.CallbackQuery) -> None:
 # region Moved from Normal messages
 @dp.message_handler(commands=['profile'])
 @dp.message_handler(lambda message: message.text == btntext.PROFILE_INFO)
-async def profile_info(message: types.Message) -> None:
+async def bot_profile_info(message: types.Message) -> None:
     if message.chat.type == 'group':
         await message.answer(replies.profile_info_only_in_pm())
         return
@@ -714,7 +749,7 @@ async def profile_info(message: types.Message) -> None:
 
 @dp.message_handler(lambda message: message.text == btntext.COWORKING_STATUS)
 @dp.message_handler(commands=['coworking_status', 'cw_status'])
-async def coworking_status_reply(message: types.Message) -> None:
+async def bot_coworking_status_reply(message: types.Message) -> None:
     # Deny access to group chats
     if chat_is_group(message):
         await message.answer(replies.coworking_status_only_in_pm())
@@ -747,7 +782,9 @@ async def coworking_status_reply(message: types.Message) -> None:
 async def bot_coworking_status_explain(call: types.CallbackQuery) -> None:
     await call.message.edit_text(replies.coworking_status_explain(coworking.get_responsible_uname()),
                                  parse_mode=ParseMode.MARKDOWN)
+# endregion
 
+# region Help
 @dp.message_handler(lambda message: message.text == btntext.HELP_MAIN)
 @dp.message_handler(commands=['help'])
 async def bot_help_menu(message: types.Message):

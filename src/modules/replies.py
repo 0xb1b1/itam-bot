@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+from datetime import datetime
+
 # region Local dependencies
 from modules import btntext as btn
 from modules.models import CoworkingStatus
@@ -36,8 +39,8 @@ def profile_info(info) -> str:
 {fields['first_name']}: {info['first_name']}
 {fields['last_name']}: {is_set(info['last_name'])}
 {fields['gname']}: {info['gname']}
-{fields['birthday']}: {is_set(info['birthday'])}
-{fields['phone']}: {is_set(info['phone'])}
+{fields['birthday']}: {datetime.strftime(info['birthday'], "%d.%m.%Y") if info['birthday'] is not None else is_set(None)}
+{fields['phone']}: +{is_set(info['phone'])}
 {fields['email']}: {is_set(info['email'])}
 {fields['bio']}: /bio
 {fields['resume']}: /resume"""
@@ -48,7 +51,7 @@ def profile_edit_first_name(first_name: str, last_name: str) -> str:
 Текущее имя: {first_name}
 Фамилия: {last_name}
 
-Отправьте новое имя"""
+Отправь новое имя"""
 
 def profile_edit_last_name(first_name: str, last_name: str) -> str:
     return f"""🛂 Изменение имени
@@ -56,7 +59,48 @@ def profile_edit_last_name(first_name: str, last_name: str) -> str:
 Имя: {first_name}
 Текущая фамилия: {last_name}
 
-Отправьте новую фамилию"""
+Отправь новую фамилию"""
+
+def profile_edit_birthday(birthday: datetime):
+    return f"""🛂 Изменение даты рождения
+
+Текущая дата рождения: {datetime.strftime(birthday, "%d.%m.%Y") if birthday else "None"}
+
+Отправь новую дату в формате DD.MM.YYYY"""
+
+def profile_edit_email(email: str) -> str:
+    return f"""🛂 Изменение даты рождения
+
+Текущий email: {email}
+
+Формат: example@exampledomain.com
+Отправь новый адрес электронной почты"""
+
+def profile_edit_phone(phone: int) -> str:
+    return f"""🛂 Изменение номера телефона
+
+Текущий номер: {phone}
+
+Формат: +79991230101 или 79991230101
+Отправь новый номер телефона"""
+
+def invalid_date_try_again() -> str:
+    return f"""❌ Неверный формат даты
+
+Формат: DD.MM.YYYY
+Попробуй еще раз :)"""
+
+def invalid_email_try_again() -> str:
+    return f"""❌ Неверный формат email
+
+Формат: example@exampledomain.com
+Попробуй еще раз :)"""
+
+def invalid_phone_try_again() -> str:
+    return f"""❌ Неверный формат номера телефона
+
+Формат: +79991230101 или 79991230101
+Попробуй еще раз :)"""
 
 def profile_edit_success() -> str:
     return "✅ Информация обновлена"
@@ -247,13 +291,13 @@ def robotics_club_info() -> str:
 (Crickets' chirp)
 """
 
-def ml_club_info() -> str:
-    return """🤖🧑‍💻 MISIS AI Lab
+# def ml_club_info() -> str:
+#     return """🤖🧑‍💻 MISIS AI Lab
 
-Прогрессивное молодое сообщество студентов, где исследуют и создают модели нейросетей, обсуждают вопросы машинного обучения, обмениваются интересными наборами данных и организуют свои kaggle-like соревнования.
+# Прогрессивное молодое сообщество студентов, где исследуют и создают модели нейросетей, обсуждают вопросы машинного обучения, обмениваются интересными наборами данных и организуют свои kaggle-like соревнования.
 
-[⚡️ Руководитель](https://t.me/arsmathprog)
-[💬 Чат](https://t.me/+vEZLTQ9wWT44OTRi)"""
+# [⚡️ Руководитель](https://t.me/arsmathprog)
+# [💬 Чат](https://t.me/+vEZLTQ9wWT44OTRi)"""
 
 def coworking_closed_during_hours() -> str:
     return """🚧 Коворкинг закрыт в рабочее время!"""

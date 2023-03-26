@@ -15,6 +15,17 @@ class GroupType(enum.IntEnum):
     #club_admins = 2
     users = 3
 
+class Skills(enum.IntEnum):
+    """Skill types, >1 allowed"""
+    backend = 0
+    frontend = 1
+    devops = 2
+    analytics = 3
+    infosec = 4
+    mobile_dev = 5
+    design = 6
+    robotics = 7
+    gamedev = 8
 
 class CoworkingStatus(enum.IntEnum):
     """Coworking statuses"""
@@ -62,6 +73,25 @@ class User(Base):
     gid = Column(IntEnum(GroupType), default=GroupType.users)
 
 
+class UserData(Base):
+    """User data model for SQLAlchemy"""
+    __tablename__ = 'user_data'
+    uid = Column(BigInteger, primary_key=True)
+    bio = Column(Text)
+    resume = Column(Text)
+    birthday = Column(Date)
+    phone = Column(BigInteger)
+    email = Column(Text)
+
+
+class UserSkills(Base):
+    """User skills model for SQLAlchemy
+    Multiple skills per uid are allowed"""
+    __tablename__ = 'user_skills'
+    uid = Column(BigInteger, primary_key=True)
+    skill = Column(IntEnum(Skills), default=None)
+
+
 class Group(Base):
     """Group model for SQLAlchemy"""
     __tablename__ = 'groups'
@@ -97,17 +127,6 @@ class AdminCoworkingNotification(Base):
     id = Column(BigInteger,
                 primary_key=True)
     status_id = Column(BigInteger)
-
-
-class UserData(Base):
-    """User data model for SQLAlchemy"""
-    __tablename__ = 'user_data'
-    uid = Column(BigInteger, primary_key=True)
-    bio = Column(Text)
-    resume = Column(Text)
-    birthday = Column(Date)
-    phone = Column(Text)
-    email = Column(Text)
 
 
 class ChatSettings(Base):
