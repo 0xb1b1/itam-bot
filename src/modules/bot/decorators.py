@@ -8,7 +8,7 @@ def message_handler(*args, **kwargs):
         return func
     return wrapper
 
-def callback_handler(*args, **kwargs):
+def callback_query_handler(*args, **kwargs):
     def wrapper(func):
         if not hasattr(func, '_handlers'):
             func._handlers = []
