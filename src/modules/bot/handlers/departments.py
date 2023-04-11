@@ -39,7 +39,7 @@ admin_only = lambda message: db.is_admin(message.from_user.id)
 groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
 
-# region Menues
+# region Menus
 # endregion
 
 

@@ -2,41 +2,31 @@
 
 """Yandex Internship skill."""
 # region Regular dependencies
-import logging                               # Logging events
-import asyncio                               # Asynchronous sleep()
+import logging
+import asyncio
 from typing import Union
-from aiogram import Bot, Dispatcher          # Telegram bot API
-from aiogram import types          # Telegram API
-from aiogram.types.message import ParseMode  # Send Markdown-formatted messages
-# from aiogram.dispatcher.filters.builtin import CommandStart
-# from aiogram.dispatcher.filters import ChatTypeFilter
-# from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram import Bot, Dispatcher
+from aiogram import types
+from aiogram.types.message import ParseMode
 from aiogram.dispatcher import FSMContext
-# from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, \
     InlineKeyboardButton, KeyboardButton, \
     ReplyKeyboardMarkup, ReplyKeyboardRemove
-# from aiogram.utils import exceptions
 from aiogram.types.chat import ChatActions
-# from sqlalchemy.exc import DataError
 from logging import Logger
 # endregion
 
 # region Local dependencies
-# import modules.bot.tools as bot_tools
 from modules import markup as nav
-# from modules import btntext
 from modules import replies
-# from modules.coworking import Manager as CoworkingManager
 from modules.db import DBManager            # Operations with sqlite db
 from modules.models import Skill
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import YandexInternship
-# from modules.buttons import coworking as cwbtn
 from modules.bot import decorators as dp
-# from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
 from .replies import yandex_internship as ya_replies
+from .keyboards import yandex_internship as ya_kbs
 from modules import stickers
 # endregion
 
@@ -55,7 +45,7 @@ admin_only = lambda message: db.is_admin(message.from_user.id)
 groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
 
-# region Menues
+# region Menus
 inlStartAgree = InlineKeyboardButton("Да, я в деле",
                                      callback_data="skill:yandex_internship\
 :welcome:agree")
@@ -107,10 +97,7 @@ async def welcome_disagree(call: types.CallbackQuery):
                                  call.message.message_id - i)
         await asyncio.sleep(0.3)
     await bot.send_message(call.from_user.id, ya_replies.welcome_disagree(),
-                           reply_markup=(bot_generic
-                                         .get_main_keyboard(call.from_user.id)
-                                         )
-                           )
+                           reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
 
 
 @dp.callback_query_handler(lambda c: c.data in ['skill:yandex_internship:welcome:' + i for i in ['agree', 'later']])
@@ -118,7 +105,7 @@ async def welcome_positive(call: types.CallbackQuery, state: FSMContext):
     """Handle user agreement to participate in Yandex Internship."""
     await call.answer()
     choice = call.data.split(':')[-1]
-    await state.set_state(YandexInternship.first_name)  # type: ignore
+    await state.set_state(YandexInternship.first_name)
     if choice == 'agree':
         await call.message.answer(ya_replies.welcome_agree())
         await state.update_data(agree=True)
@@ -134,30 +121,32 @@ async def welcome_positive(call: types.CallbackQuery, state: FSMContext):
 @dp.message_handler(state=YandexInternship.first_name)
 async def first_name(message: types.Message, state: FSMContext):
     """Set user first name."""
+    data = await state.get_data()
     db.set_user_first_name(message.from_user.id, message.text)
-    await message.answer(ya_replies.profile_last_name(),
-                         reply_markup=nav.inlCancelMenu)
-    await state.set_state(YandexInternship.last_name)  # type: ignore
+    await message.answer(ya_replies.profile_last_name(), reply_markup=nav.inlCancelMenu)
+    await state.set_state(YandexInternship.last_name)
 
 
 @dp.message_handler(state=YandexInternship.last_name)
 async def last_name(message: types.Message, state: FSMContext):
     """Set user last name."""
+    data = await state.get_data()
     db.set_user_last_name(message.from_user.id, message.text)
     share_btn = KeyboardButton(text="Поделиться",
                                request_contact=True)
     share_kb = (ReplyKeyboardMarkup(resize_keyboard=True,
                                     one_time_keyboard=True)
                 .add(share_btn))
-    await message.answer(ya_replies.profile_phone(),
+    await message.answer(ya_replies.profile_phone(data.get('agree')),
                          reply_markup=share_kb)
-    await state.set_state(YandexInternship.phone)  # type: ignore
+    await state.set_state(YandexInternship.phone)
 
 
 @dp.message_handler(state=YandexInternship.phone,
                     content_types=types.ContentType.CONTACT)
 async def phone(message: types.Message, state: FSMContext):
     """Set user phone."""
+    data = await state.get_data()
     try:
         db.set_user_phone(message.from_user.id,
                           int(message.contact.phone_number))
@@ -165,9 +154,9 @@ async def phone(message: types.Message, state: FSMContext):
         await message.answer(replies.invalid_phone_try_again(),
                              reply_markup=nav.inlCancelMenu)
         return
-    await message.answer(ya_replies.profile_email(),
+    await message.answer(ya_replies.profile_email(data.get('agree')),
                          reply_markup=nav.inlCancelMenu)
-    await state.set_state(YandexInternship.email)  # type: ignore
+    await state.set_state(YandexInternship.email)
 
 
 @dp.message_handler(state=YandexInternship.email)
@@ -179,8 +168,9 @@ async def email(message: types.Message, state: FSMContext):
         await message.answer(replies.invalid_email_try_again(),
                              reply_markup=nav.inlCancelMenu)
         return
-    await state.finish()
-    message_to_be_edited = await message.answer(ya_replies.profile_skills())
+    await message.answer(ya_replies.profile_skills())
+    message_to_be_edited = await message.answer("Skill list placeholder")
+    await state.set_state(YandexInternship.skills)
     await skills(message, state, manual_run=True,
                  message_to_be_edited=message_to_be_edited)
 
@@ -193,25 +183,9 @@ async def skills(call: Union[types.CallbackQuery, types.Message],
     """Edit user profile skills (loops)."""
     if isinstance(call, types.CallbackQuery):
         await call.answer()
-    """Edit user profile skills"""
-    await state.finish()
-    await state.set_state(YandexInternship.skills)  # type: ignore
     if not manual_run and call.data == 'skill:yandex_internship:setup:done':
         await call.answer()
-        await bot.send_chat_action(call.message.chat.id, ChatActions.TYPING)
-        await asyncio.sleep(0.2)
-        await call.message.answer(ya_replies.profile_skills_done())
-        await bot.send_chat_action(call.message.chat.id, ChatActions.TYPING)
-        await asyncio.sleep(0.3)
-        await call.message.edit_text(replies
-                                     .profile_info(db.
-                                                   get_user_data(call
-                                                                 .from_user
-                                                                 .id)))
-        await bot.send_chat_action(call.message.chat.id, ChatActions.TYPING)
-        await asyncio.sleep(0.7)
-        await call.message.answer(ya_replies.profile_edit_done())
-        await state.finish()
+        await state.set_state(YandexInternship.finalize)
         return
     if not manual_run:
         split = call.data.split(':')
@@ -224,7 +198,7 @@ async def skills(call: Union[types.CallbackQuery, types.Message],
     user_data = db.get_user_data(call.from_user.id)
     if user_data is None:
         raise AttributeError('User data is None')
-    keyboard = ya_replies.get_skill_inl_kb(user_data['skills'])
+    keyboard = ya_kbs.get_skill_inl_kb(user_data['skills'])
     cmessage = call.message if isinstance(call, types.CallbackQuery) else call
     if not message_to_be_edited:
         await cmessage.edit_text(replies.profile_edit_skills(),
@@ -232,6 +206,42 @@ async def skills(call: Union[types.CallbackQuery, types.Message],
     else:
         await message_to_be_edited.edit_text(replies.profile_edit_skills(),
                                              reply_markup=keyboard)
+
+
+@dp.callback_query_handler(state=YandexInternship.finalize)
+async def finalize(call: types.CallbackQuery, state: FSMContext):
+    """Finalize profile setup (for both "agree" and "later" cases)."""
+    data = await state.get_data()
+    await bot.send_chat_action(call.message.chat.id, ChatActions.TYPING)
+    await asyncio.sleep(0.2)
+    await call.message.answer(ya_replies.profile_skills_done())
+    await bot.send_chat_action(call.message.chat.id, ChatActions.TYPING)
+    await asyncio.sleep(0.3)
+    await call.message.edit_text(replies.profile_info(db.get_user_data(call.from_user.id)))
+    await bot.send_chat_action(call.message.chat.id, ChatActions.TYPING)
+    await asyncio.sleep(0.7)
+    if data.get('agree'):
+        await call.message.answer(ya_replies.profile_edit_done(),
+                                  reply_markup=bot_generic.get_main_keyboard(call.message.from_user.id))
+        await state.finish()  # TODO: Add the user to the database
+    else:
+        await call.message.answer(ya_replies.profile_edit_done_later(),
+                                  reply_markup=ya_kbs.inl_profile_edit_done_later())
+        await state.set_state(YandexInternship.finalize_later_upsell)
+
+
+@dp.callback_query_handler(state=YandexInternship.finalize_later_upsell)
+async def finalize_later_upsell(call: types.CallbackQuery, state: FSMContext):
+    """Try to upsell the user to agree to the terms."""
+    if call.data == 'skill:yandex_internship:setup:finalize:upsell:agree':
+        await call.message.answer(ya_replies.profile_edit_done(),
+                                  reply_markup=bot_generic.get_main_keyboard(call.message.from_user.id))
+        # TODO: Add the user to the database
+        await state.finish()
+    elif call.data == 'skill:yandex_internship:setup:finalize:upsell:later':
+        await call.message.answer(ya_replies.profile_edit_done_later_upsell_later(),
+                                  reply_markup=bot_generic.get_main_keyboard(call.message.from_user.id))
+        await state.finish()
 
 
 # noinspection PyProtectedMember

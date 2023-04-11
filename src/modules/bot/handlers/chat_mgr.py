@@ -7,8 +7,9 @@ import logging
 from typing import Union
 from aiogram import Bot, Dispatcher
 from aiogram import types
-
+from logging import Logger
 # endregion
+
 # region Local dependencies
 import modules.bot.tools as bot_tools
 from modules import replies

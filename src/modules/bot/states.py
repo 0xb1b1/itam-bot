@@ -48,4 +48,5 @@ class YandexInternship(StatesGroup):
     phone = State()
     email = State()
     skills = State()
-    listing_await = State()
+    finalize = State()
+    finalize_later_upsell = State()

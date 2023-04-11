@@ -31,7 +31,6 @@ bot: Bot = None  # type: ignore
 log: Logger = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
-coworking: CoworkingManager = None  # type: ignore
 # endregion
 
 # region Lambda functions
@@ -85,12 +84,10 @@ async def admin_broadcast_stage1(message: types.Message,
     """Broadcast message to all users (admin, stage 1)."""
     await state.update_data(msg_type=media_types[message.text])
     if message.text == TYPE_TEXT:
-        await message.answer(f"Введи текст для рассылки\
-\n\n{replies.cancel_action()}")
+        await message.answer(f"Введи текст для рассылки\n\n{replies.cancel_action()}")
         await state.set_state(AdminBroadcast.message)  # type: ignore
     else:
-        await message.answer(f"Отправь медиа-файл для рассылки\
-\n\n{replies.cancel_action()}",
+        await message.answer(f"Отправь медиа-файл для рассылки\n\n{replies.cancel_action()}",
                              reply_markup=ReplyKeyboardRemove())
         await state.set_state(AdminBroadcast.media)  # type: ignore
 
@@ -113,13 +110,11 @@ async def admin_broadcast_stage2(message: types.Message,
                 else message.video_note.file_id)
     await state.update_data(media_id=media_id)
     if content_type in [ContentType.PHOTO, ContentType.VIDEO]:
-        await message.answer(f"Введи текст для рассылки\
-\n\n{replies.cancel_action()}")
+        await message.answer(f"Введи текст для рассылки\n\n{replies.cancel_action()}")
         await state.set_state(AdminBroadcast.message)  # type: ignore
     else:
         await state.update_data(message='')
-        await message.answer(f"Выбери ширину рассылки\
-\n\n{replies.cancel_action()}",
+        await message.answer(f"Выбери ширину рассылки\n\n{replies.cancel_action()}",
                              reply_markup=nav.adminBroadcastScopeMenu)
         await state.set_state(AdminBroadcast.scope)  # type: ignore
 
@@ -129,8 +124,7 @@ async def admin_broadcast_stage3(message: types.Message,
                                  state: FSMContext) -> None:
     """Broadcast message to all users (admin, stage 3)."""
     await state.update_data(message=message.text)
-    await message.answer(f"Выбери ширину рассылки\
-\n\n{replies.cancel_action()}",
+    await message.answer(f"Выбери ширину рассылки\n\n{replies.cancel_action()}",
                          reply_markup=nav.adminBroadcastScopeMenu)
     await state.set_state(AdminBroadcast.scope)  # type: ignore
 
