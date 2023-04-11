@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-"""Clubs bot handlers."""
+"""Bot club handlers."""
 # region Regular dependencies
 from aiogram import Bot, Dispatcher
 from aiogram import types
@@ -85,10 +85,6 @@ async def club_info(call: types.CallbackQuery) -> None:
             await call.message.edit_text(replies.robotics_club_info(),
                                          reply_markup=nav.inlClubsMenu,
                                          parse_mode=ParseMode.MARKDOWN)
-        # elif club == 'ml':
-        #     await call.message.edit_text(replies.ml_club_info(),
-        #                                 reply_markup=nav.inlClubsMenu,
-        #                                 parse_mode=ParseMode.MARKDOWN)
     except exceptions.MessageNotModified:
         log.debug(f"User {call.from_user.id} tried to request the same club info ({club})")
 

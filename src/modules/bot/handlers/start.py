@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+
+"""Bot Start handlers."""
 # region Regular dependencies
 import logging
 import asyncio
@@ -9,16 +13,15 @@ from aiogram.dispatcher.filters.builtin import CommandStart
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types.chat import ChatActions
 from logging import Logger
-
 # endregion
+
 # region Local dependencies
-from modules import replies                 # Telegram bot information output
-from modules.db import DBManager            # Operations with sqlite db
-from modules.bot.generic import BotGenericFunctions      # Bot generic functions
-from modules.bot import decorators as dp  # Bot decorators
+from modules import replies
+from modules.db import DBManager
+from modules.bot.generic import BotGenericFunctions
+from modules.bot import decorators as dp
 from modules import stickers
-# Start routines
-from modules.bot.handlers.yandex_internship import yandex_internship_start
+from modules.bot.handlers.yandex_internship import yandex_internship_start  # Start routines
 # endregion
 
 # region Passed by setup()

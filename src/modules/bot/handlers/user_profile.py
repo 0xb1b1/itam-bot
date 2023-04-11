@@ -1,4 +1,9 @@
+#!/usr/bin/env python3
+
+
+"""Bot user profile handlers."""
 # region Regular dependencies
+from typing import Union
 import logging
 from datetime import datetime
 from aiogram import Bot, Dispatcher
@@ -17,7 +22,7 @@ from modules.db import DBManager
 from modules.models import Skill
 from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import *
-from modules.bot import decorators as dp  # Bot decorators
+from modules.bot import decorators as dp
 from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
 # endregion
 
@@ -125,7 +130,7 @@ async def edit_profile_done(call: types.CallbackQuery, state: FSMContext) -> Non
 
 @dp.callback_query_handler(lambda c: c.data.startswith('profile:edit:skill:'))
 @dp.callback_query_handler(state=UserEditProfile.skills)
-async def edit_profile_skills(call: types.CallbackQuery,
+async def edit_profile_skills(call: Union[types.CallbackQuery, types.Message],
                               state: FSMContext,
                               manual_run: bool = False,
                               message_to_be_edited: types.Message = None) -> None:
@@ -335,6 +340,4 @@ def setup(dispatcher: Dispatcher,
                 if handler_type == 'message':
                     dispatcher.register_message_handler(func, *args, **kwargs)
                 elif handler_type == 'callback_query':
-                    dispatcher.register_callback_query_handler(func,
-                                                               *args,
-                                                               **kwargs)
+                    dispatcher.register_callback_query_handler(func, *args, **kwargs)

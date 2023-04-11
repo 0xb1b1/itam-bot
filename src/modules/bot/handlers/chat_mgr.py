@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-"""Chat manager bot handlers."""
+"""Bot chat manager handlers."""
 # region Regular dependencies
 import logging
 from typing import Union
@@ -41,7 +41,7 @@ async def plaintext_answers_toggle_for_chat(message: types.Message):
     """Toggle plaintext answers boolean in database for a given chat"""
     chat_id = int(message.get_args())
     if not chat_id:
-        await message.answer("Укажите айди чата!")
+        await message.answer("Укажи айди чата!")
         return
     status = db.toggle_message_answers_status(chat_id)
     await message.answer(replies.plaintext_answers_reply(status, toggled=True, chat_id=chat_id))

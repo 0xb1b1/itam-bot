@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-"""Departments module."""
+"""Bot department handlers."""
 # region Regular dependencies
 import logging
 from aiogram import Bot, Dispatcher
@@ -11,17 +11,17 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 # endregion
 
 # region Local dependencies
-from modules import btntext                 # Telegram bot button text
-from modules.coworking import Manager as CoworkingManager  # Coworking space information
-from modules import replies                 # Telegram bot information output
-from modules.db import DBManager            # Operations with sqlite db
-from modules.models import CoworkingStatus  # Coworking status model
-from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related functions
-from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
-from modules.bot.generic import BotGenericFunctions      # Bot generic functions
+from modules import btntext
+from modules.coworking import Manager as CoworkingManager
+from modules import replies
+from modules.db import DBManager
+from modules.models import CoworkingStatus
+from modules.bot.coworking import BotCoworkingFunctions
+from modules.bot.broadcast import BotBroadcastFunctions
+from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import *
-from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
-from modules.bot import decorators as dp  # Bot decorators
+from modules.buttons import coworking as cwbtn  # Coworking mutation buttons
+from modules.bot import decorators as dp
 from logging import Logger
 # endregion
 

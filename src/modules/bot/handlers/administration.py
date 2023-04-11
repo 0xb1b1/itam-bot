@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+
+
+"""Bot administration handlers."""
 # region Regular dependencies
 from aiogram import Bot, Dispatcher
 from aiogram import types
 from aiogram.types.message import ParseMode
 from aiogram.dispatcher import FSMContext
-# from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from sqlalchemy.exc import DataError
 from logging import Logger
@@ -213,6 +216,4 @@ def setup(dispatcher: Dispatcher,
                 if handler_type == 'message':
                     dispatcher.register_message_handler(func, *args, **kwargs)
                 elif handler_type == 'callback_query':
-                    dispatcher.register_callback_query_handler(func,
-                                                               *args,
-                                                               **kwargs)
+                    dispatcher.register_callback_query_handler(func, *args, **kwargs)

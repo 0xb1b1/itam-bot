@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Skill replies bot handlers."""
+"""Bot skill reply handlers."""
 # region Regular dependencies
 import logging
 from aiogram import Bot, Dispatcher
@@ -13,7 +13,6 @@ from logging import Logger
 # import modules.bot.tools as bot_tools
 from modules import markup as nav
 from modules import btntext
-# from modules import replies
 from modules.coworking import Manager as CoworkingManager
 # from modules import replies
 from modules.db import DBManager
@@ -43,6 +42,7 @@ async def bot_skills_menu(message: types.Message):
     await message.answer(sk_replies.bot_skills_menu(), reply_markup=nav.botSkillsMenu)
 
 
+# noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,

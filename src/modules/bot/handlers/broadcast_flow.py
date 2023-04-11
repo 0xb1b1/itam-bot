@@ -208,6 +208,4 @@ def setup(dispatcher: Dispatcher,
                 if handler_type == 'message':
                     dispatcher.register_message_handler(func, *args, **kwargs)
                 elif handler_type == 'callback_query':
-                    dispatcher.register_callback_query_handler(func,
-                                                               *args,
-                                                               **kwargs)
+                    dispatcher.register_callback_query_handler(func, *args, **kwargs)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-"""Departments module."""
+"""Bot department handlers."""
 # region Regular dependencies
 import logging
 from typing import Union
@@ -14,11 +14,10 @@ from logging import Logger
 # region Local dependencies
 from modules import markup as nav
 from modules.coworking import Manager as CoworkingManager
-from modules.db import DBManager            # Operations with sqlite db
-from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
-from modules.bot.generic import BotGenericFunctions      # Bot generic functions
-from modules.bot.states import *
-# from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
+from modules.db import DBManager
+from modules.bot.broadcast import BotBroadcastFunctions
+from modules.bot.generic import BotGenericFunctions
+# from modules.bot.states import *
 from modules.bot import decorators as dp  # Bot decorators
 from .replies import departments as dept_replies
 from modules import stickers
@@ -63,13 +62,11 @@ def setup(dispatcher: Dispatcher,
     global log
     global bot_broadcast
     global bot_generic
-    global coworking
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
     log = logger
     db = database
-    coworking = CoworkingManager(db)
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

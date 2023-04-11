@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Yandex Internship skill."""
+"""Bot Yandex Internship skill handlers."""
 # region Regular dependencies
 import logging
 import asyncio
@@ -19,7 +19,7 @@ from logging import Logger
 # region Local dependencies
 from modules import markup as nav
 from modules import replies
-from modules.db import DBManager            # Operations with sqlite db
+from modules.db import DBManager
 from modules.models import Skill
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
@@ -121,7 +121,6 @@ async def welcome_positive(call: types.CallbackQuery, state: FSMContext):
 @dp.message_handler(state=YandexInternship.first_name)
 async def first_name(message: types.Message, state: FSMContext):
     """Set user first name."""
-    data = await state.get_data()
     db.set_user_first_name(message.from_user.id, message.text)
     await message.answer(ya_replies.profile_last_name(), reply_markup=nav.inlCancelMenu)
     await state.set_state(YandexInternship.last_name)
@@ -268,6 +267,4 @@ def setup(dispatcher: Dispatcher,
                 if handler_type == 'message':
                     dispatcher.register_message_handler(func, *args, **kwargs)
                 elif handler_type == 'callback_query':
-                    dispatcher.register_callback_query_handler(func,
-                                                               *args,
-                                                               **kwargs)
+                    dispatcher.register_callback_query_handler(func, *args, **kwargs)

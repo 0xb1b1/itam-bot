@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 
-"""Coworking status mutation handlers."""
+"""Bot coworking status mutation handlers."""
 # region Regular dependencies
-import logging                               # Logging events
-import asyncio                               # Asynchronous sleep()
-from aiogram import Bot, Dispatcher          # Telegram bot API
-from aiogram import types          # Telegram API
-# from aiogram.types.message import ParseMode  # Send Markdown-formatted messages
+import logging
+import asyncio
+from aiogram import Bot, Dispatcher
+from aiogram import types
+# from aiogram.types.message import ParseMode
 # from aiogram.dispatcher.filters import ChatTypeFilter
 # from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -24,12 +24,10 @@ from modules import replies
 from modules.db import DBManager
 from modules.models import CoworkingStatus
 from modules.bot.coworking import BotCoworkingFunctions
-# from modules.bot.scheduled import BotScheduledFunctions
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import *
-# from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
-from modules.bot import decorators as dp  # Bot decorators
+from modules.bot import decorators as dp
 # endregion
 
 # region Passed by setup()
