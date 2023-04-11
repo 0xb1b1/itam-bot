@@ -1,39 +1,22 @@
 # region Regular dependencies
-import os
-import logging                               # Logging events
-import asyncio                               # Asynchronous sleep()
+import logging
 from datetime import datetime
-from typing import Optional, Union, List
-from aiogram import Bot, Dispatcher          # Telegram bot API
-from aiogram import executor, types          # Telegram API
-from aiogram.types.message import ParseMode  # Send Markdown-formatted messages
-from aiogram.dispatcher.filters.builtin import CommandStart
-from aiogram.dispatcher.filters import ChatTypeFilter
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram import Bot, Dispatcher
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardRemove
 from aiogram.utils.exceptions import MessageNotModified
-from aiogram.utils import exceptions
-from sqlalchemy.exc import DataError
 from logging import Logger
 
 # endregion
 # region Local dependencies
-import modules.bot.tools as bot_tools           # Bot tools
-from modules import markup as nav           # Bot menus
-from modules import btntext                 # Telegram bot button text
-from modules import replies                 # Telegram bot information output
-from modules.coworking import Manager as CoworkingManager  # Coworking space information
-from modules import replies                 # Telegram bot information output
-from modules.db import DBManager            # Operations with sqlite db
-from modules.models import CoworkingStatus, Skill
-from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related functions
-from modules.bot.scheduled import BotScheduledFunctions  # Bot scheduled functions (recurring)
-from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
-from modules.bot.generic import BotGenericFunctions      # Bot generic functions
+from modules import markup as nav
+from modules import btntext
+from modules import replies
+from modules.db import DBManager
+from modules.models import Skill
+from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import *
-#from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
 from modules.bot import decorators as dp  # Bot decorators
 from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
 # endregion
@@ -108,11 +91,11 @@ async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> N
     fn = lambda x: f'profile:edit:{x}'
     if call.data == fn('first_name'):
         await call.message.edit_text(replies.profile_edit_first_name(user_data['first_name'],
-                                                               user_data['last_name']))
+                                                                     user_data['last_name']))
         await state.set_state(UserEditProfile.first_name)
     elif call.data == fn('last_name'):
         await call.message.edit_text(replies.profile_edit_last_name(user_data['first_name'],
-                                                            user_data['last_name']))
+                                                                    user_data['last_name']))
         await state.set_state(UserEditProfile.last_name)
     elif call.data == fn('birthday'):
         await call.message.edit_text(replies.profile_edit_birthday(user_data['birthday']))
@@ -136,7 +119,8 @@ async def edit_profile_done(call: types.CallbackQuery, state: FSMContext) -> Non
     await call.answer()
     await call.message.edit_text(replies.profile_info(db.get_user_data(call.from_user.id)),
                                  reply_markup=nav.inlProfileMenu)
-    await call.message.answer("Восстанавливаю основную клавиатуру...", reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
+    await call.message.answer("Восстанавливаю основную клавиатуру...",
+                              reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
 
 
 @dp.callback_query_handler(lambda c: c.data.startswith('profile:edit:skill:'))
@@ -330,23 +314,21 @@ async def profile_setup_phone(message: types.Message, state: FSMContext):
 # endregion
 
 
+# noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
           logger: logging.Logger,
-          broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     """Setup handlers for bot."""
     global bot
     global db
     global log
     global bot_generic
-    global coworking
     bot = bot_obj
     bot_generic = generic
     log = logger
     db = database
-    coworking = CoworkingManager(db)
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

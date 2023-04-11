@@ -96,6 +96,7 @@ class BotBroadcastFunctions:
                                     chat_ids: List[int],
                                     is_markdown: bool | None = None):
         send_func: Any | None = None
+        _ = send_func  # Linter error: unused variable
         match media_type:
             case ContentType.PHOTO:
                 send_func = self._send_photo
@@ -144,6 +145,8 @@ class BotBroadcastFunctions:
                                video_note: str,
                                caption: str | None = None,
                                is_markdown: bool | None = None):
+        _ = caption
+        _ = is_markdown
         try:
             await self.bot.send_video_note(cid, video_note)
         except Exception as exc:

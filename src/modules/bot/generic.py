@@ -1,17 +1,25 @@
+#!/usr/bin/env python3
 
+"""Generic bot functions."""
 from typing import Union
 from aiogram import types
-from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from aiogram.types import KeyboardButton, InlineKeyboardMarkup, \
+    ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from modules import btntext
 
+
 class BotGenericFunctions:
+    """Generic bot functions."""
+
     def __init__(self, bot, db, log):
+        """Initialize generic bot functions."""
         self.db = db
         self.bot = bot
         self.log = log
 
-    def chat_is_group(self, message: types.Message) -> bool:
+    @staticmethod
+    def chat_is_group(message: types.Message) -> bool:
         """Check if message is sent from group or private chat"""
         # Check if the type of cmessage is CallbackQuery
         if isinstance(message, types.CallbackQuery):
@@ -22,18 +30,18 @@ class BotGenericFunctions:
 
     def get_main_keyboard(self, message: Union[types.Message, int]) -> InlineKeyboardMarkup:
         user_id = message.from_user.id if isinstance(message, types.Message) else message
-        btnClubs = KeyboardButton(btntext.CLUBS_BTN)
-        btnCoworkingStatus = KeyboardButton(btntext.COWORKING_STATUS)
-        btnProfileInfo = KeyboardButton(btntext.PROFILE_INFO)
-        btnHelp = KeyboardButton(btntext.HELP_MAIN)
-        btnBotSkills = KeyboardButton(btntext.BOT_SKILLS_BTN)
-        mainMenu = ReplyKeyboardMarkup(row_width=2).add(btnClubs,
-                                                        btnCoworkingStatus,
-                                                        btnProfileInfo,
-                                                        btnHelp,
-                                                        btnBotSkills)
+        btn_clubs = KeyboardButton(btntext.CLUBS_BTN)
+        btn_coworking_status = KeyboardButton(btntext.COWORKING_STATUS)
+        btn_profile_info = KeyboardButton(btntext.PROFILE_INFO)
+        btn_help = KeyboardButton(btntext.HELP_MAIN)
+        btn_bot_skills = KeyboardButton(btntext.BOT_SKILLS_BTN)
+        main_menu = ReplyKeyboardMarkup(row_width=2).add(btn_clubs,
+                                                         btn_coworking_status,
+                                                         btn_profile_info,
+                                                         btn_help,
+                                                         btn_bot_skills)
         if self.db.is_admin(user_id):
-            mainMenu.add(KeyboardButton(btntext.ADMIN_BTN))
+            main_menu.add(KeyboardButton(btntext.ADMIN_BTN))
         if isinstance(message, types.Message):
-            return ReplyKeyboardRemove() if self.chat_is_group(message) else mainMenu
-        return mainMenu
+            return ReplyKeyboardRemove() if self.chat_is_group(message) else main_menu
+        return main_menu

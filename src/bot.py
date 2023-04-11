@@ -202,7 +202,7 @@ def run() -> None:
     administration.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     coworking_mut.setup(dp, bot, db, log, bot_broadcast, bot_generic, bot_cw)
     coworking_info.setup(dp, bot, db, log, bot_broadcast, bot_generic, bot_cw)
-    user_profile.setup(dp, bot, db, log, bot_broadcast, bot_generic)
+    user_profile.setup(dp, bot, db, log, bot_generic)
     broadcast_flow.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     chat_mgr.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     clubs.setup(dp, bot, db, log, bot_broadcast, bot_generic)

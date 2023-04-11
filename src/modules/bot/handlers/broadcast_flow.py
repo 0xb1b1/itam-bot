@@ -2,36 +2,26 @@
 
 """Bot broadcast flow handlers."""
 # region Regular dependencies
-# import os
-import logging                               # Logging events
-import asyncio                               # Asynchronous sleep()
+import logging
+import asyncio
 # from datetime import datetime
 from typing import Union
-from aiogram import Bot, Dispatcher          # Telegram bot API
-from aiogram import types          # Telegram API
-# from aiogram.types.message import ParseMode
-# from aiogram.dispatcher.filters import ChatTypeFilter
+from aiogram import Bot, Dispatcher
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-# from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, \
     ReplyKeyboardRemove, ContentType
-# from aiogram.utils import exceptions
-# from sqlalchemy.exc import DataError
 from logging import Logger
-
 # endregion
+
 # region Local dependencies
-# import modules.bot.tools as bot_tools           # Bot tools
 from modules import markup as nav
 from modules import btntext
 from modules import replies
-from modules.coworking import Manager as CoworkingManager
 from modules.db import DBManager
-# from modules.models import CoworkingStatus
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import AdminBroadcast
-# from modules.buttons import coworking as cwbtn
 from modules.bot import decorators as dp
 # endregion
 
@@ -200,6 +190,7 @@ async def admin_broadcast_stage5(message: types.Message,
     await state.finish()
 
 
+# noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
@@ -212,13 +203,11 @@ def setup(dispatcher: Dispatcher,
     global log
     global bot_broadcast
     global bot_generic
-    global coworking
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
     log = logger
     db = database
-    coworking = CoworkingManager(db)
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

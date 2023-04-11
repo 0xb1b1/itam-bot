@@ -1,4 +1,4 @@
-"Bot help functions"
+"""Bot help functions"""
 
 from aiogram import types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -7,6 +7,7 @@ from aiogram.types.message import ParseMode
 from modules import btntext, replies
 from modules.coworking import Manager as CoworkingManager
 
+
 class BotHelpFunctions:
     def __init__(self, bot, db, log):
         self.db = db
@@ -14,17 +15,18 @@ class BotHelpFunctions:
         self.cwman = CoworkingManager(db)
         self.log = log
 
-    async def main(self, message: types.Message) -> None:
+    @staticmethod
+    async def main(message: types.Message) -> None:
         if message.chat.id != message.from_user.id:  # Avoid sending the help menu in groups
             return
-        inlHelpMenu = InlineKeyboardMarkup(resize_keyboard=True)
-        inlHelpMenu.add(InlineKeyboardButton(btntext.CREDITS,
-                                            callback_data='credits'))
-        inlHelpMenu.add(InlineKeyboardButton(btntext.COWORKING_LOCATION,
-                                            callback_data='coworking:location'))
+        inl_help_menu = InlineKeyboardMarkup(resize_keyboard=True)
+        inl_help_menu.add(InlineKeyboardButton(btntext.CREDITS,
+                                               callback_data='credits'))
+        inl_help_menu.add(InlineKeyboardButton(btntext.COWORKING_LOCATION,
+                                               callback_data='coworking:location'))
         await message.answer(replies.help_message(),
-                            parse_mode=ParseMode.MARKDOWN,
-                            reply_markup=inlHelpMenu)
+                             parse_mode=ParseMode.MARKDOWN,
+                             reply_markup=inl_help_menu)
 
     async def location(self, call: types.CallbackQuery) -> None:
         await call.answer()

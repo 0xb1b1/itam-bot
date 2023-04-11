@@ -35,7 +35,7 @@ from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import YandexInternship
 # from modules.buttons import coworking as cwbtn
 from modules.bot import decorators as dp
-from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
+# from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
 from .replies import yandex_internship as ya_replies
 from modules import stickers
 # endregion
@@ -49,7 +49,8 @@ bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
 
 # region Lambda functions
-debug_dec = lambda message: log.debug(f'User {message.from_user.id} from chat {message.chat.id} called command `{message.text}`') or True
+debug_dec = lambda message: log.debug(f'User {message.from_user.id} from \
+chat {message.chat.id} called command `{message.text}`') or True
 admin_only = lambda message: db.is_admin(message.from_user.id)
 groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
@@ -185,7 +186,7 @@ async def email(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query_handler(state=YandexInternship.skills)
-async def skills(call: types.CallbackQuery,
+async def skills(call: Union[types.CallbackQuery, types.Message],
                  state: FSMContext,
                  manual_run: bool = False,
                  message_to_be_edited: types.Message | None = None) -> None:
@@ -233,7 +234,7 @@ async def skills(call: types.CallbackQuery,
                                              reply_markup=keyboard)
 
 
-
+# noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,

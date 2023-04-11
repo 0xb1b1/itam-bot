@@ -14,7 +14,7 @@ def start() -> str:
 
 
 def welcome() -> Tuple[str, str, str]:
-    return (welcome_part0(), welcome_part1(), welcome_part2())
+    return welcome_part0(), welcome_part1(), welcome_part2()
 
 
 def welcome_part0() -> str:

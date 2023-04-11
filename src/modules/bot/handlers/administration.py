@@ -1,40 +1,22 @@
 # region Regular dependencies
-# import os
-import logging                               # Logging events
-# import asyncio                               # Asynchronous sleep()
-# from datetime import datetime
-# from typing import Optional, Union
-from aiogram import Bot, Dispatcher          # Telegram bot API
-from aiogram import types          # Telegram API
-from aiogram.types.message import ParseMode  # Send Markdown-formatted messages
-# from aiogram.dispatcher.filters.builtin import CommandStart
-# from aiogram.dispatcher.filters import ChatTypeFilter
-# from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram import Bot, Dispatcher
+from aiogram import types
+from aiogram.types.message import ParseMode
 from aiogram.dispatcher import FSMContext
 # from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import KeyboardButton, InlineKeyboardMarkup, \
-                          InlineKeyboardButton, ReplyKeyboardMarkup, \
-                          ReplyKeyboardRemove, ContentType
-# from aiogram.utils import exceptions
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from sqlalchemy.exc import DataError
 from logging import Logger
-
 # endregion
+
 # region Local dependencies
-import modules.bot.tools as bot_tools           # Bot tools
-from modules import markup as nav           # Bot menus
-from modules import btntext                 # Telegram bot button text
-from modules import replies                 # Telegram bot information output
-from modules.coworking import Manager as CoworkingManager  # Coworking space information
-from modules import replies                 # Telegram bot information output
-from modules.db import DBManager            # Operations with sqlite db
-# from modules.models import CoworkingStatus  # Coworking status model
-from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related functions
-from modules.bot.scheduled import BotScheduledFunctions  # Bot scheduled functions (recurring)
-from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
-from modules.bot.generic import BotGenericFunctions      # Bot generic functions
+from modules import btntext
+from modules.coworking import Manager as CoworkingManager
+from modules import replies
+from modules.db import DBManager
+from modules.bot.broadcast import BotBroadcastFunctions
+from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import AdminChangeUserGroup, AdminGetObjectId
-# from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
 from modules.bot import decorators as dp  # Bot decorators
 # endregion
 
@@ -59,12 +41,12 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 @dp.message_handler(admin_only, commands=['admin'])
 async def admin_panel(message: types.Message):
     """Send admin panel."""
-    inlAdminChangeGroupBtn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP,
-                                                  callback_data='change_user_group')
-    inlAdminBroadcastBtn = InlineKeyboardButton(btntext.INL_ADMIN_BROADCAST,
-                                                callback_data='admin:broadcast')
-    markup = InlineKeyboardMarkup().add(inlAdminChangeGroupBtn,
-                                        inlAdminBroadcastBtn)
+    inl_admin_change_group_btn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP,
+                                                      callback_data='change_user_group')
+    inl_admin_broadcast_btn = InlineKeyboardButton(btntext.INL_ADMIN_BROADCAST,
+                                                   callback_data='admin:broadcast')
+    markup = InlineKeyboardMarkup().add(inl_admin_change_group_btn,
+                                        inl_admin_broadcast_btn)
     await message.answer(replies.admin_panel(coworking.get_status()),
                          reply_markup=markup)
     log.info(f"User {message.from_user.id} opened the admin panel")
@@ -79,7 +61,8 @@ async def get_notif_db(message: types.Message):
 @dp.message_handler(admin_only, commands=['stats'])
 async def get_stats(message: types.Message) -> None:
     """Get stats."""
-    mkup = InlineKeyboardMarkup().add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG, callback_data="coworking:trim_log"))
+    mkup = InlineKeyboardMarkup().add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG,
+                                                                 callback_data="coworking:trim_log"))
     await message.answer(replies.stats(db.get_stats()), reply_markup=mkup)
 
 
@@ -131,6 +114,7 @@ Details below:\n\n" + str(exc))
     log.info(f"User {message.from_user.id} changed user {user_id} group \
 to {group_id}")
     await state.finish()
+
 
 @dp.message_handler(admin_only, commands=['update_admin_kb'])
 async def update_admin_kb(message: types.Message):
@@ -204,10 +188,11 @@ async def reply_with_id(message: types.Message):
 # endregion
 
 
+# noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
+          logger: Logger,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     global bot
