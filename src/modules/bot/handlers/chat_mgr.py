@@ -41,7 +41,7 @@ async def plaintext_answers_toggle_for_chat(message: types.Message):
     """Toggle plaintext answers boolean in database for a given chat"""
     chat_id = int(message.get_args())
     if not chat_id:
-        await message.answer("Укажи айди чата!")
+        await message.answer("Укажи ID чата!")
         return
     status = db.toggle_message_answers_status(chat_id)
     await message.answer(replies.plaintext_answers_reply(status, toggled=True, chat_id=chat_id))

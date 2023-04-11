@@ -136,10 +136,10 @@ async def bot_cancel_handler(cmessage: Union[types.Message, types.CallbackQuery]
 # endregion
 
 # region Credits
-@dp.callback_query_handler(lambda c: c.data == 'credits')
-async def credits(call: types.CallbackQuery) -> None:
+@dp.callback_query_handler(lambda c: c.data == 'bot:credits')
+async def bot_credits(call: types.CallbackQuery) -> None:
     """Send credits"""
-    await call.message.edit_text(replies.credits(),
+    await call.message.edit_text(replies.bot_credits(),
                                  parse_mode=ParseMode.MARKDOWN)
 # endregion
 

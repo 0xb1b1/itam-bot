@@ -13,14 +13,13 @@ from logging import Logger
 
 # region Local dependencies
 from modules import markup as nav
-from modules.coworking import Manager as CoworkingManager
 from modules.db import DBManager
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
 # from modules.bot.states import *
 from modules.bot import decorators as dp  # Bot decorators
 from .replies import departments as dept_replies
-from modules import stickers
+
 # endregion
 
 # region Passed by setup()

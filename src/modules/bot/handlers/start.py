@@ -20,7 +20,7 @@ from modules import replies
 from modules.db import DBManager
 from modules.bot.generic import BotGenericFunctions
 from modules.bot import decorators as dp
-from modules import stickers
+from modules.media import stickers
 from modules.bot.handlers.yandex_internship import yandex_internship_start  # Start routines
 # endregion
 

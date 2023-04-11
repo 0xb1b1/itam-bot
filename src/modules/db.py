@@ -211,7 +211,11 @@ class DBManager:
         return self.session.query(Coworking).all()
 
     def get_coworking_log_str(self) -> str:
-        return "\n".join([f"{i+1}. {c.time} - {c.uid} - {'open' if c.status == CoworkingStatus.open else ('event_open' if CoworkingStatus.event_open else ('temp_closed' if CoworkingStatus.temp_closed else 'closed'))}" for i, c in enumerate(self.get_coworking_log())])
+        return "\n".join([f"""{i+1}. {c.time} - {c.uid} - \
+{'open' if c.status == CoworkingStatus.open
+        else ('event_open' if CoworkingStatus.event_open
+              else ('temp_closed' if CoworkingStatus.temp_closed
+                    else 'closed'))}""" for i, c in enumerate(self.get_coworking_log())])
 
     def get_user_count(self) -> int:
         """Get the current amount of users in the database"""
@@ -561,19 +565,19 @@ class DBManager:
             status = False
         return status
 
-    def get_coworking_notification_chats(self) -> list:
+    def get_coworking_notification_chats(self) -> List[int]:
         """Get a dict of all chats (present in ChatSettings table) that have notifications enabled."""
         return [c.cid for c in (self.session.query(ChatSettings)
-                                .filter(ChatSettings.notifications_enabled == True)
+                                .filter(ChatSettings.notifications_enabled)
                                 .all())]
 
     def get_coworking_notification_chats_str(self) -> str:
         """Get a structured string containing all chats that have notifications enabled."""
-        return "\n".join([f"{i+1}. {c.cid}" for i, c in enumerate(self.get_coworking_notification_chats())])
+        return "\n".join([f"{i+1}. {c}" for i, c in enumerate(self.get_coworking_notification_chats())])
 
     def get_coworking_notification_enabled_count(self) -> int:
         """Get the number of chats with coworking notifications enabled."""
-        return self.session.query(ChatSettings).filter(ChatSettings.notifications_enabled == True).count()
+        return self.session.query(ChatSettings).filter(ChatSettings.notifications_enabled).count()
 
     # region Admin coworking notifications
     def coworking_notified_admin_closed_during_hours_today(self) -> bool:

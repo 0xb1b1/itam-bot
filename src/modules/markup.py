@@ -3,7 +3,7 @@
 """Handles Telegram bot button creation and mapping."""
 from typing import List
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.types import InlineKeyboardMarkup as InlKbMkup
+from aiogram.types import InlineKeyboardMarkup as InlKbMarkup
 from aiogram.types import InlineKeyboardButton as InlKbBtn
 from modules import btntext as btn
 
@@ -20,19 +20,18 @@ inlEditProfileBtn = InlKbBtn(btn.INL_EDIT_PROFILE,
                              callback_data='profile:edit')
 inlSetupProfileBtn = InlKbBtn(btn.INL_SETUP_PROFILE,
                               callback_data='profile:setup')
-inlProfileMenu = InlKbMkup(row_width=1).add(inlEditProfileBtn,
-                                            inlSetupProfileBtn)
+inlProfileMenu = InlKbMarkup(row_width=1).add(inlEditProfileBtn, inlSetupProfileBtn)
 
 inlEditBioBtn = InlKbBtn(btn.INL_EDIT_BIO,
                          callback_data='edit_bio')
-inlBioMenu = InlKbMkup().add(inlEditBioBtn)
+inlBioMenu = InlKbMarkup().add(inlEditBioBtn)
 
 inlEditResumeBtn = InlKbBtn(btn.INL_EDIT_RESUME,
                             callback_data='edit_resume')
-inlResumeMenu = InlKbMkup().add(inlEditResumeBtn)
+inlResumeMenu = InlKbMarkup().add(inlEditResumeBtn)
 
 inlCancelBtn = InlKbBtn('Отмена', callback_data='cancel')
-inlCancelMenu = InlKbMkup().add(inlCancelBtn)
+inlCancelMenu = InlKbMarkup().add(inlCancelBtn)
 
 bcScopeUsers = KeyboardButton(btn.USERS)
 bcScopeAdmins = KeyboardButton(btn.ADMINS)
@@ -44,24 +43,18 @@ adminBroadcastScopeMenu = (ReplyKeyboardMarkup(resize_keyboard=True)
 
 confirmBtn = KeyboardButton(btn.CONFIRM)
 cancelBtn = KeyboardButton(btn.CANCEL)
-confirmMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(confirmBtn,
-                                                            cancelBtn)
+confirmMenu = ReplyKeyboardMarkup(resize_keyboard=True).add(confirmBtn, cancelBtn)
 
-inlCTFClubBtn = InlKbBtn(btn.CTF_CLUB,
-                         callback_data='ctf_club_info')
-inlDesignClubBtn = InlKbBtn(btn.DESIGN_CLUB,
-                            callback_data='design_club_info')
-inlGameDevClubBtn = InlKbBtn(btn.GAMEDEV_CLUB,
-                             callback_data='gamedev_club_info')
-inlHackathonClubBtn = InlKbBtn(btn.HACKATHON_CLUB,
-                               callback_data='hackathon_club_info')
-inlRoboticsClubBtn = InlKbBtn(btn.ROBOTICS_CLUB,
-                              callback_data='robotics_club_info')
-inlClubsMenu = InlKbMkup().add(inlCTFClubBtn,
-                               inlDesignClubBtn,
-                               inlHackathonClubBtn,
-                               inlGameDevClubBtn,
-                               inlRoboticsClubBtn)
+inlCTFClubBtn = InlKbBtn(btn.CTF_CLUB, callback_data='ctf_club_info')
+inlDesignClubBtn = InlKbBtn(btn.DESIGN_CLUB, callback_data='design_club_info')
+inlGameDevClubBtn = InlKbBtn(btn.GAMEDEV_CLUB, callback_data='gamedev_club_info')
+inlHackathonClubBtn = InlKbBtn(btn.HACKATHON_CLUB, callback_data='hackathon_club_info')
+inlRoboticsClubBtn = InlKbBtn(btn.ROBOTICS_CLUB, callback_data='robotics_club_info')
+inlClubsMenu = InlKbMarkup().add(inlCTFClubBtn,
+                                 inlDesignClubBtn,
+                                 inlHackathonClubBtn,
+                                 inlGameDevClubBtn,
+                                 inlRoboticsClubBtn)
 
 cwTempClose15Btn = KeyboardButton("15")
 cwTempClose20Btn = KeyboardButton("20")
@@ -75,15 +68,15 @@ coworkingTempCloseDeltaMenu = (ReplyKeyboardMarkup(resize_keyboard=True)
 
 yandexInternshipSkill = InlKbBtn(btn.BOT_SKILL_YANDEX_INTERNSHIP,
                                  callback_data='skill:yandex_internship')
-botSkillsMenu = (InlKbMkup(row_width=1)
+botSkillsMenu = (InlKbMarkup(row_width=1)
                  .add(yandexInternshipSkill,
                       InlKbBtn(btn.BOT_SKILL_INSTITUTIONS,
                                callback_data='skill:departments')))
 
 
-def get_skill_inl_kb(active_skills: List[Skill]) -> InlKbMkup:
+def get_skill_inl_kb(active_skills: List[Skill]) -> InlKbMarkup:
     """Get inline keyboard with skills and marks for editing."""
-    kb = InlKbMkup()
+    kb = InlKbMarkup()
     # Get all skills from Skill class
     skills = [x for x in Skill]
     skill_names = replies.skill_names()
@@ -99,9 +92,9 @@ def get_skill_inl_kb(active_skills: List[Skill]) -> InlKbMkup:
     return kb
 
 
-def get_profile_edit_fields_kb() -> InlKbMkup:
+def get_profile_edit_fields_kb() -> InlKbMarkup:
     """Get inline keyboard with profile fields for editing."""
-    kb = InlKbMkup()
+    kb = InlKbMarkup()
     fields = replies.profile_fields()
     for key in fields:
         if key in ['uid', 'gname', 'bio', 'resume']:

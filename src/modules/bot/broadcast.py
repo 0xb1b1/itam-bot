@@ -27,10 +27,10 @@ class BotBroadcastFunctions:
         self.log = log
 
     async def broadcast(self, content: str, scope: str,  # noqa: C901
+                        media_type: str,
                         custom_scope: list | None = None,
                         is_markdown: bool | None = None,
-                        media: str | None = None,
-                        media_type: str | None = None) -> None:
+                        media: str | None = None) -> None:
         """Broadcast message to all chats (handles multiple media types)."""
         if media is not None and media_type is None:
             raise ValueError("Media type is not specified")
@@ -50,32 +50,22 @@ class BotBroadcastFunctions:
             raise ValueError("Invalid scope")
         self.log.debug(f"Broadcasting message to \
 {len(chat_ids)} chats: {chat_ids}")
+        if media is None and media_type != ContentType.TEXT:
+            raise ValueError("Media is not specified")
         if media is None:
             await self._send_text_broadcast(content,
                                             chat_ids,
                                             is_markdown=is_markdown)
             return
-        if media_type == ContentType.PHOTO:
+        if media_type in [ContentType.PHOTO, ContentType.VIDEO,
+                          ContentType.VIDEO_NOTE]:
             await self._send_media_broadcast(content,
                                              media,
                                              media_type,
                                              chat_ids,
                                              is_markdown=is_markdown)
             return
-        if media_type == ContentType.VIDEO:
-            await self._send_media_broadcast(content,
-                                             media,
-                                             media_type,
-                                             chat_ids,
-                                             is_markdown=is_markdown)
-            return
-        if media_type == ContentType.VIDEO_NOTE:
-            await self._send_media_broadcast(content,
-                                             media,
-                                             media_type,
-                                             chat_ids,
-                                             is_markdown=is_markdown)
-            return
+        raise ValueError("Invalid media type")
 
     async def _send_text_broadcast(self, content: str,
                                    chat_ids: List[int],

@@ -50,7 +50,7 @@ async def admin_panel(message: types.Message):
                                                    callback_data='admin:broadcast')
     markup = InlineKeyboardMarkup().add(inl_admin_change_group_btn,
                                         inl_admin_broadcast_btn)
-    await message.answer(replies.admin_panel(coworking.get_status()),
+    await message.answer(replies.admin_panel(),
                          reply_markup=markup)
     log.info(f"User {message.from_user.id} opened the admin panel")
 
@@ -61,12 +61,12 @@ async def get_notif_db(message: types.Message):
     await message.answer(db.get_coworking_notification_chats_str())
 
 
-@dp.message_handler(admin_only, commands=['stats'])
-async def get_stats(message: types.Message) -> None:
-    """Get stats."""
-    mkup = InlineKeyboardMarkup().add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG,
-                                                                 callback_data="coworking:trim_log"))
-    await message.answer(replies.stats(db.get_stats()), reply_markup=mkup)
+@dp.callback_query_handler(lambda c: c.data == 'admin:stats')
+async def get_stats(call: types.CallbackQuery) -> None:
+    """Get bot statistics for administration."""
+    markup = InlineKeyboardMarkup().add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG,
+                                                                   callback_data="coworking:trim_log"))
+    await call.message.answer(replies.stats(db.get_stats()), reply_markup=markup)
 
 
 @dp.callback_query_handler(lambda c: c.data == 'change_user_group')
@@ -85,7 +85,7 @@ async def change_user_group_stage1(message: types.Message, state: FSMContext) ->
         keyboard.add(types.KeyboardButton(group_name))
     await message.answer(f"Выберите группу\n\n{replies.cancel_action()}", reply_markup=keyboard)
     await state.update_data(user_id=user_id)
-    await state.set_state(AdminChangeUserGroup.group_id.state)  # Also accepted: await AdminChangeUserGroup.next()
+    await state.set_state(AdminChangeUserGroup.group_id.state)
 
 
 @dp.message_handler(state=AdminChangeUserGroup.group_id)

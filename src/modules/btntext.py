@@ -11,9 +11,9 @@ HELP_MAIN = "🤨 Помощь"
 BOT_SKILLS_BTN = "🤖 Навыки"
 ADMIN_BTN = "🛠️ Управление"
 
-# Inline admininstration buttons
+# Inline administration buttons
 INL_ADMIN_EDIT_GROUP = "⚙️ Изменить группу пользователя"
-TRIM_COWORKING_LOG = "🧹 Обрезать лог статусов коворкинга"
+TRIM_COWORKING_LOG = "🧹 Обрезать лог статусов коворкинг пространства"
 COWORKING_TAKE_RESPONSIBILITY = "🚧 Взять ответственность"
 INL_ADMIN_BROADCAST = "📢 Рассылка"
 INL_COWORKING_STATUS_EXPLAIN = "🤨 Что это?"
@@ -47,11 +47,10 @@ DESIGN_CLUB = "Дизайн"
 GAMEDEV_CLUB = "GameDev"
 HACKATHON_CLUB = "Хакатон"
 ROBOTICS_CLUB = "Robotics"
-ML_CLUB = "ML"
 
 # Other buttons
 CREDITS = "ℹ️ Об авторах"
-COWORKING_LOCATION = "📍 Местоположение коворкинга"
+COWORKING_LOCATION = "📍 Местоположение коворкинг пространства"
 COWORKING_LOCATION_SHORT = "📍 Местоположение"
 
 # Skills

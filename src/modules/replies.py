@@ -7,6 +7,7 @@ from modules import btntext as btn
 from modules.models import CoworkingStatus
 # endregion
 
+
 def welcome_message(uname) -> str:
     return f"""{f"{uname}, давай знакомиться!" if uname else "Давай знакомиться!"}
 
@@ -15,6 +16,7 @@ def welcome_message(uname) -> str:
 другое 😉
 
 Рад видеть тебя в нашем сообществе 💚"""
+
 
 def welcome_message_instructions() -> str:
     return f"""Ты, наверное, задаешься вопросом: «Как мне пользоваться этим ботом?» 🤔
@@ -31,14 +33,18 @@ def welcome_message_instructions() -> str:
 Буду с нетерпением ждать твоих команд! 🤩
 """
 
+
 def welcome_message_go() -> str:
     return f"""Поехали! 🚀"""
+
 
 def start_command_not_found() -> str:
     return "❌ Диплинк не найден. Попробуй /start"
 
+
 def permission_denied() -> str:
     return "❌ У вас недостаточно прав для выполнения этой команды"
+
 
 def skill_names() -> dict:
     return {
@@ -53,6 +59,7 @@ def skill_names() -> dict:
         'gamedev': 'Геймдев'
     }
 
+
 def profile_fields() -> dict:
     return {
         "first_name": "Имя",
@@ -66,6 +73,7 @@ def profile_fields() -> dict:
         "skills": "Компетенции"
     }
 
+
 def profile_info(info) -> str:
     fields = profile_fields()
     return f"""🛂 Информация о пользователе
@@ -73,10 +81,14 @@ def profile_info(info) -> str:
 {fields['first_name']}: {is_set(info['first_name'])}
 {fields['last_name']}: {is_set(info['last_name'])}
 {fields['gname']}: {info['gname']}
-{fields['birthday']}: {datetime.strftime(info['birthday'], "%d.%m.%Y") if info['birthday'] is not None else is_set(None)}
+{fields['birthday']}: {datetime.strftime(info['birthday'],
+                                         "%d.%m.%Y") 
+    if info['birthday'] is not None else is_set(None)}
 {fields['phone']}: {f"+{info['phone']}" if info['phone'] is not None else btn.NOT_SET}
 {fields['email']}: {is_set(info['email'])}
-{fields['skills']}: {btn.NOT_SET if len(info['skills']) == 0 else ', '.join(skill_names()[skill.name] for skill in info['skills'])}"""
+{fields['skills']}: {btn.NOT_SET if len(info['skills']) == 0
+    else ', '.join(skill_names()[skill.name] for skill in info['skills'])}"""
+
 
 def profile_edit_first_name(first_name: str, last_name: str) -> str:
     return f"""🛂 Изменение имени
@@ -86,6 +98,7 @@ def profile_edit_first_name(first_name: str, last_name: str) -> str:
 
 Отправь новое имя"""
 
+
 def profile_edit_last_name(first_name: str, last_name: str) -> str:
     return f"""🛂 Изменение фамилии
 
@@ -94,12 +107,14 @@ def profile_edit_last_name(first_name: str, last_name: str) -> str:
 
 Отправь новую фамилию"""
 
+
 def profile_edit_birthday(birthday: datetime):
     return f"""🛂 Изменение даты рождения
 
 Текущая дата рождения: {datetime.strftime(birthday, "%d.%m.%Y") if birthday else "None"}
 
 Отправь новую дату в формате DD.MM.YYYY"""
+
 
 def profile_edit_email(email: str) -> str:
     return f"""🛂 Изменение даты рождения
@@ -109,6 +124,7 @@ def profile_edit_email(email: str) -> str:
 Формат: example@exampledomain.com
 Отправь новый адрес электронной почты"""
 
+
 def profile_edit_phone(phone: int) -> str:
     return f"""🛂 Изменение номера телефона
 
@@ -117,10 +133,12 @@ def profile_edit_phone(phone: int) -> str:
 Формат: +79991230101 или 79991230101
 Отправь новый номер телефона"""
 
+
 def profile_edit_skills() -> str:
     return f"""🛂 Изменение компетенций
 
 Выбери компетенции, которые тебе ближе"""
+
 
 def invalid_date_try_again() -> str:
     return f"""❌ Неверный формат даты
@@ -128,11 +146,13 @@ def invalid_date_try_again() -> str:
 Формат: DD.MM.YYYY
 Попробуй еще раз :)"""
 
+
 def invalid_email_try_again() -> str:
     return f"""❌ Неверный формат email
 
 Формат: example@exampledomain.com
 Попробуй еще раз :)"""
+
 
 def invalid_phone_try_again() -> str:
     return f"""❌ Неверный формат номера телефона
@@ -140,8 +160,10 @@ def invalid_phone_try_again() -> str:
 Формат: +79991230101 или 79991230101
 Попробуй еще раз :)"""
 
+
 def please_start_bot() -> str:
     return f"""❌ Что-то пошло не так... Давай попробуем восстановить твой аккаунт: /start"""
+
 
 # region Profile setup
 def profile_setup_first_name() -> str:
@@ -149,11 +171,13 @@ def profile_setup_first_name() -> str:
 
 Отправь свое имя"""
 
+
 def profile_setup_last_name(first_name: str) -> str:
     return f"""🛂 Настройка профиля
 ✅ Имя установлено: {first_name}
 
 Отправь свою фамилию"""
+
 
 def profile_setup_birthday(last_name: str) -> str:
     return f"""🛂 Настройка профиля
@@ -161,11 +185,13 @@ def profile_setup_birthday(last_name: str) -> str:
 
 Отправь свою дату рождения в формате DD.MM.YYYY"""
 
+
 def profile_setup_email(birthday: datetime) -> str:
     return f"""🛂 Настройка профиля
 ✅ Дата рождения установлена: {datetime.strftime(birthday, "%d.%m.%Y")}
 
 Отправь свой email"""
+
 
 def profile_setup_phone(email: str) -> str:
     return f"""🛂 Настройка профиля
@@ -173,11 +199,13 @@ def profile_setup_phone(email: str) -> str:
 
 Отправь свой номер телефона в формате +79991230101 или 79991230101"""
 
+
 def profile_setup_skills(phone: int) -> str:
     return f"""🛂 Настройка профиля
 ✅ Номер телефона установлен: +{str(phone)}
 
 Укажи компетенции, которые тебе ближе"""
+
 
 # def profile_setup_success(phone: int) -> str:
 #     return f"""🛂 Настройка профиля
@@ -186,22 +214,31 @@ def profile_setup_skills(phone: int) -> str:
 # 🎉 Профиль успешно настроен!"""
 # endregion
 
+
 def profile_edit_success() -> str:
     return "✅ Информация обновлена"
+
 
 def is_set(data) -> str:
     return data if data else btn.NOT_SET
 
+
 def coworking_notifications_on() -> str:
     return "🔔🟢 Уведомления о статусе коворкинга включены"
+
 
 def coworking_notifications_off() -> str:
     return "🔔🔴 Уведомления о статусе коворкинга выключены"
 
-def get_coworking_status_reply_data(status: CoworkingStatus, responsible_uname: str = None, delta_mins: int = 0, responsible_account: bool = True, one_newline: bool = False) -> tuple:
+
+def get_coworking_status_reply_data(status: CoworkingStatus,
+                                    responsible_uname: str = None,
+                                    delta_mins: int = 0,
+                                    responsible_account: bool = True,
+                                    one_newline: bool = False) -> tuple:
     """Return reply data for coworking status"""
     newline = "\n" if one_newline else "\n\n"
-    postfix_msg =  f"{newline}Ответственный: @{responsible_uname}" if responsible_account else ""
+    postfix_msg = f"{newline}Ответственный: @{responsible_uname}" if responsible_account else ""
     if delta_mins > 0 and delta_mins is not None:
         postfix_msg = f" (на {delta_mins} минут)!" + postfix_msg
     if status == CoworkingStatus.open:
@@ -224,10 +261,16 @@ def get_coworking_status_reply_data(status: CoworkingStatus, responsible_uname: 
         status_str = "[статус неизвестен]"
     return status_icon, status_str
 
-def coworking_status_reply(status: CoworkingStatus, responsible_uname: str = "(не назначен)", delta_mins: int = 0) -> str:
+
+def coworking_status_reply(status: CoworkingStatus,
+                           responsible_uname: str = "(не назначен)",
+                           delta_mins: int = 0) -> str:
     """Return coworking status reply string"""
-    status_icon, status_str = get_coworking_status_reply_data(status, responsible_uname=responsible_uname, delta_mins=delta_mins)
+    status_icon, status_str = get_coworking_status_reply_data(status,
+                                                              responsible_uname=responsible_uname,
+                                                              delta_mins=delta_mins)
     return f"🔑{status_icon} Коворкинг ITAM (Г-511) {status_str}"
+
 
 def switch_coworking_status_inline_binary_action(status: CoworkingStatus) -> str:
     """Return coworking status inline action (to do) string [open/close]"""
@@ -237,7 +280,10 @@ def switch_coworking_status_inline_binary_action(status: CoworkingStatus) -> str
         action_inl = "Закрыть"
     elif status in [CoworkingStatus.temp_closed, CoworkingStatus.closed]:
         action_inl = "Открыть"
+    else:
+        raise ValueError("Invalid status")
     return f"{action_inl} коворкинг (сейчас {status_inl})"
+
 
 def switch_coworking_from_nonbinary_action(status: CoworkingStatus, to_open: bool) -> str:
     """Accepts only CoworkingStatus.temp_closed or CoworkingStatus.event_open"""
@@ -247,27 +293,41 @@ def switch_coworking_from_nonbinary_action(status: CoworkingStatus, to_open: boo
     status_inl = status_str + " " + status_icon
     return f"{'Открыть' if to_open else 'Закрыть'} коворкинг (сейчас {status_inl})"
 
-def coworking_status_changed(status: CoworkingStatus, responsible_uname: str = "(не назначен)",delta_mins: int = 0) -> str:
-    status_icon, status_str = get_coworking_status_reply_data(status, responsible_uname=responsible_uname, delta_mins=delta_mins)
+
+def coworking_status_changed(status: CoworkingStatus,
+                             responsible_uname: str = "(не назначен)",
+                             delta_mins: int = 0) -> str:
+    status_icon, status_str = get_coworking_status_reply_data(status,
+                                                              responsible_uname=responsible_uname,
+                                                              delta_mins=delta_mins)
     return f"🔑{status_icon} Коворкинг ITAM (Г-511) {status_str}"
+
 
 def coworking_status_not_binary() -> str:
     return "❌ Невозможно выполнить действие: коворкинг не в открытом или закрытом состоянии"
 
+
 def plaintext_answers_reply(status: bool, toggled: bool = False, chat_id: int = None, admin_uname: str = None) -> str:
-    return f"Ответы на обычные сообщения{' теперь' if toggled else ''} {'включены 🟢' if status else 'выключены 🔴'}{f' для чата {str(chat_id)}' if chat_id else ''}{f' администратором @{admin_uname}' if admin_uname else ''}"
+    return f"Ответы на обычные сообщения{' теперь' if toggled else ''} \
+{'включены 🟢' if status else 'выключены 🔴'}{f' для чата {str(chat_id)}' if chat_id else ''}\
+{f' администратором @{admin_uname}' if admin_uname else ''}"
+
 
 def menu_updated_reply(user_count: int, admins_only: bool = False) -> str:
     return f"Меню обновлено для {user_count} {'пользователей' if not admins_only else 'администраторов'}"
 
+
 def profile_info_only_in_pm() -> str:
     return "🛂‼️ Эту команду можно использовать только в личных сообщениях"
+
 
 def coworking_status_only_in_pm() -> str:
     return "🔑‼️ Эту команду можно использовать только в личных сообщениях"
 
+
 def please_click_start() -> str:
     return "🛂‼️ Пожалуйста, нажмите сюда: /start"
+
 
 def help_message() -> str:
     return """🤨 Помощь ITAM Bot
@@ -280,7 +340,7 @@ def cancel_action() -> str:
     return "/cancel — ❌ Отменить действие"
 
 
-def admin_panel(coworking_status: CoworkingStatus) -> str:
+def admin_panel() -> str:
     return """🛂 Панель администратора
 
 兀 Команды
@@ -298,30 +358,37 @@ def admin_panel(coworking_status: CoworkingStatus) -> str:
 /broadcast — 📢 Создать рассылку
 /cancel — ❌ Отменить любой flow"""
 
-def stats(stats: dict) -> str:
+
+def stats(statistics: dict) -> str:
     """Display statistics for admins"""
-    cw_icon, cw_status = get_coworking_status_reply_data(stats["coworking_status"], responsible_account=False)
+    cw_icon, cw_status = get_coworking_status_reply_data(statistics["coworking_status"],
+                                                         responsible_account=False)
     cw_status = f"{cw_icon} {cw_status}"
     return f"""📊 Статистика
 
-💃 Пользователей: {stats['users']}
-🧑‍💻 Администраторов: {stats['admins']}
+💃 Пользователей: {statistics['users']}
+🧑‍💻 Администраторов: {statistics['admins']}
 🔑 Статус коворкинга: {cw_status}
-💫 Изменений статуса коворкинга: {stats['coworking_log_count']}
-🔔 Пользователей с включенными уведомлениями: {stats['coworking_notifications']}"""
+💫 Изменений статуса коворкинга: {statistics['coworking_log_count']}
+🔔 Пользователей с включенными уведомлениями: {statistics['coworking_notifications']}"""
+
 
 def club_info_general() -> str:
     return """👩‍🎨🥷🎮💸🧑‍💻
 Информация о клубах"""
 
+
 def ctf_club_info() -> str:
     return """🥷🧑‍💻 CTF Club
 
-CTF клуб занимается изучением программного обеспечения для дальшего поиска уязвимостей и обеспечения информационной безопасности.
+CTF клуб занимается изучением программного обеспечения для дальшего поиска уязвимостей и обеспечения информационной \
+безопасности.
 
-CTF (Capture the Flag/Захват Флага) — командные совернования в области компьютерной (информационной) безопасности. Разностороннее развитие в IT, компетентность и глубокий уровень познаний — все это получают ученики CTF клуба.
+CTF (Capture the Flag/Захват Флага) — командные совернования в области компьютерной (информационной) безопасности. \
+Разностороннее развитие в IT, компетентность и глубокий уровень познаний — все это получают ученики CTF клуба.
 
-Члены CTF клуба принимают участие в регулярных внутренних соревнованиях, которые помогают отточить навыки для дальнейшего участия в городских, федеральных и международных конкурсах.
+Члены CTF клуба принимают участие в регулярных внутренних соревнованиях, которые помогают отточить навыки для \
+дальнейшего участия в городских, федеральных и международных конкурсах.
 
 📌 Контакты
 
@@ -329,6 +396,7 @@ CTF (Capture the Flag/Захват Флага) — командные совер
 [💬 Чат](https://t.me/+lgw8dT2HFuRhZmFi)
 [📣 Канал](https://t.me/misis_ctf)
 """
+
 
 def hackathon_club_info() -> str:
     return """💸🧑‍💻 Hackathon Club
@@ -342,6 +410,7 @@ def hackathon_club_info() -> str:
 [💬 Чат](https://t.me/+WQeYWDOPnvs5yhhY)
 """
 
+
 def gamedev_club_info() -> str:
     return """🎮🧑‍💻 GameDev Club
 
@@ -354,10 +423,12 @@ def gamedev_club_info() -> str:
 [💬 Чат](https://t.me/+MH0JVkTEsmozYzRi)
 """
 
+
 def design_club_info() -> str:
     return """👩‍🎨🧑‍💻 Design at MISIS Now
 
-DAMN — это не просто клуб, это школа и дизайн-студия, в которой каждый студент может получить теоретические и практические навыки.
+DAMN — это не просто клуб, это школа и дизайн-студия, в которой каждый студент может получить теоретические \
+и практические навыки.
 Участники движения хакатонят и разрабатывают коммерческие продукты.
 
 📌 Контакты
@@ -365,6 +436,7 @@ DAMN — это не просто клуб, это школа и дизайн-с
 [⚡️ Руководитель](https://t.me/a_asyotr)
 [💬 Чат](https://t.me/+zTBGzdqNc4xlZWUy)
 """
+
 
 def robotics_club_info() -> str:
     return """🤖🧑‍💻 Robotics Club
@@ -377,27 +449,24 @@ def robotics_club_info() -> str:
 (Crickets' chirp)
 """
 
-# def ml_club_info() -> str:
-#     return """🤖🧑‍💻 MISIS AI Lab
-
-# Прогрессивное молодое сообщество студентов, где исследуют и создают модели нейросетей, обсуждают вопросы машинного обучения, обмениваются интересными наборами данных и организуют свои kaggle-like соревнования.
-
-# [⚡️ Руководитель](https://t.me/arsmathprog)
-# [💬 Чат](https://t.me/+vEZLTQ9wWT44OTRi)"""
 
 def coworking_closed_during_hours() -> str:
     return """🚧 Коворкинг закрыт в рабочее время!"""
 
+
 def coworking_open_after_hours() -> str:
     return """🚧 Коворкинг открыт в нерабочее время!"""
+
 
 def coworking_status_already_responsible() -> str:
     return """🔑🚧🔴 Ты уже отвечаешь за коворкинг!"""
 
+
 def coworking_status_now_responsible() -> str:
     return """🔑🚧🟢 Теперь ты отвечаешь за коворкинг!"""
 
-def credits() -> str:
+
+def bot_credits() -> str:
     return """🤖 Бот разработан в **ITAM**
 [💙 Telegram](https://t.me/itatmisis)
 [🚾 VK](https://vk.com/itatmisis)
@@ -405,14 +474,18 @@ def credits() -> str:
 📌 Контакты разработчиков
 Аксель @oxb1b1"""
 
+
 def user_group_changed() -> str:
     return """👥 Группа пользователя изменена"""
+
 
 def broadcast_successful() -> str:
     return """📢 Рассылка успешна"""
 
+
 def toggle_coworking_notifications(curr_status: bool) -> str:
     return f"[{'🟢' if curr_status else '🔴'}] {'Выключить' if curr_status else 'Включить'} уведомления"
+
 
 def coworking_location_info() -> str:
     return """📍 Коворкинг находится в корпусе Г, 5 этаж, 511 кабинет
@@ -421,7 +494,9 @@ def coworking_location_info() -> str:
 
 Ждем тебя!"""
 
+
 def coworking_status_explain(responsible_uname: str) -> str:
     return f"""Ответственный за коворкинг — человек, у которого находятся ключи от Г511
 
-Если у тебя возникнут вопросы, связанные с коворкингом ITAM, [напиши этому человеку в ЛС](https://t.me/{responsible_uname})!"""
+Если у тебя возникнут вопросы, связанные с коворкингом ITAM, [напиши этому человеку в ЛС]\
+(https://t.me/{responsible_uname})!"""

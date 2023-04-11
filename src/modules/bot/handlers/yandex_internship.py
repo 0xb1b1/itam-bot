@@ -27,7 +27,8 @@ from modules.bot.states import YandexInternship
 from modules.bot import decorators as dp
 from .replies import yandex_internship as ya_replies
 from .keyboards import yandex_internship as ya_kbs
-from modules import stickers
+from ...media import stickers
+
 # endregion
 
 # region Passed by setup()
@@ -234,12 +235,12 @@ async def finalize_later_upsell(call: types.CallbackQuery, state: FSMContext):
     """Try to upsell the user to agree to the terms."""
     if call.data == 'skill:yandex_internship:setup:finalize:upsell:agree':
         await call.message.answer(ya_replies.profile_edit_done(),
-                                  reply_markup=bot_generic.get_main_keyboard(call.message.from_user.id))
+                                  reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
         # TODO: Add the user to the database
         await state.finish()
     elif call.data == 'skill:yandex_internship:setup:finalize:upsell:later':
         await call.message.answer(ya_replies.profile_edit_done_later_upsell_later(),
-                                  reply_markup=bot_generic.get_main_keyboard(call.message.from_user.id))
+                                  reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
         await state.finish()
 
 

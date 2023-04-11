@@ -44,7 +44,7 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 TYPE_TEXT = 'Текст'
 TYPE_PIC = 'Картинка'
 TYPE_VIDEO = 'Видео'
-TYPE_VIDEO_NOTE = 'Видеосообщение'
+TYPE_VIDEO_NOTE = 'Видео-сообщение'
 
 media_types = {
     TYPE_TEXT: ContentType.TEXT,
@@ -168,16 +168,14 @@ async def admin_broadcast_stage5(message: types.Message,
     media_type = state_data['msg_type']
     # Send broadcast
     if media_type == ContentType.TEXT:
-        asyncio.get_event_loop().create_task(bot_broadcast
-                                             .broadcast(state_data['message'],
-                                                        scope))
+        asyncio.get_event_loop().create_task(bot_broadcast.broadcast(state_data['message'], scope, ContentType.TEXT))
     else:
         (asyncio.get_event_loop()
          .create_task(bot_broadcast.broadcast(state_data['message'],
                                               scope,
-                                              media=state_data['media_id'],
-                                              media_type=media_type)))
-    log.info(f"Admin {message.from_user.id} broadcasted message to scope \
+                                              media_type,
+                                              media=state_data['media_id'])))
+    log.info(f"Admin {message.from_user.id} successful broadcast message to scope \
 {scope}\nMessage:\n\"\"\"\n{state_data['message']}\n\"\"\"")
     await message.answer(replies.broadcast_successful(),
                          reply_markup=bot_generic.get_main_keyboard(message))

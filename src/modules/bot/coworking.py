@@ -3,7 +3,7 @@
 # import asyncio
 from typing import Union
 from aiogram import types
-from aiogram.types import InlineKeyboardMarkup as InlKbMkup
+from aiogram.types import InlineKeyboardMarkup as InlKbMarkup
 from aiogram.types import InlineKeyboardButton as InlKbBtn
 # from aiogram.types.message import ParseMode
 
@@ -26,52 +26,49 @@ class BotCoworkingFunctions:
         self.log = log
         self.broadcast = BotBroadcastFunctions(bot, db, log)
 
-    def get_admin_markup(self, cmessage: Union[types.CallbackQuery,
-                                               types.Message]) -> InlKbMkup:
+    def get_admin_markup(self, cmessage: Union[types.CallbackQuery, types.Message]) -> InlKbMarkup:
         """Get admin markup for coworking status buttons."""
         cw_status: CoworkingStatus = self.cwman.get_status()
-        mkup = InlKbMkup(row_width=1)
+        markup = InlKbMarkup(row_width=1)
         if cw_status == CoworkingStatus.open:
-            mkup.add(cwbtn.inl_event_open,
-                     cwbtn.inl_event_close,
-                     cwbtn.inl_temp_close,
-                     cwbtn.inl_close)
+            markup.add(cwbtn.inl_event_open,
+                       cwbtn.inl_event_close,
+                       cwbtn.inl_temp_close,
+                       cwbtn.inl_close)
         elif cw_status == CoworkingStatus.event_open:
-            mkup.add(cwbtn.inl_open,
-                     cwbtn.inl_event_close,
-                     cwbtn.inl_temp_close,
-                     cwbtn.inl_close)
+            markup.add(cwbtn.inl_open,
+                       cwbtn.inl_event_close,
+                       cwbtn.inl_temp_close,
+                       cwbtn.inl_close)
         elif cw_status == CoworkingStatus.event_closed:
-            mkup.add(cwbtn.inl_open,
-                     cwbtn.inl_event_open,
-                     cwbtn.inl_temp_close,
-                     cwbtn.inl_close)
+            markup.add(cwbtn.inl_open,
+                       cwbtn.inl_event_open,
+                       cwbtn.inl_temp_close,
+                       cwbtn.inl_close)
         elif cw_status == CoworkingStatus.temp_closed:
-            mkup.add(cwbtn.inl_open,
-                     cwbtn.inl_event_open,
-                     cwbtn.inl_event_close,
-                     cwbtn.inl_close)
+            markup.add(cwbtn.inl_open,
+                       cwbtn.inl_event_open,
+                       cwbtn.inl_event_close,
+                       cwbtn.inl_close)
         elif cw_status == CoworkingStatus.closed:
-            mkup.add(cwbtn.inl_open,
-                     cwbtn.inl_event_open,
-                     cwbtn.inl_event_close,
-                     cwbtn.inl_temp_close)
+            markup.add(cwbtn.inl_open,
+                       cwbtn.inl_event_open,
+                       cwbtn.inl_event_close,
+                       cwbtn.inl_temp_close)
         if not self.cwman.is_responsible(cmessage.from_user.id):
-            mkup.add(cwbtn.inl_take_responsibility)
-        return mkup
+            markup.add(cwbtn.inl_take_responsibility)
+        return markup
 
-    def get_admin_markup_full(self,
-                              cmessage: Union[types.CallbackQuery,
-                                              types.Message]) -> InlKbMkup:
+    def get_admin_markup_full(self, cmessage: Union[types.CallbackQuery, types.Message]) -> InlKbMarkup:
         """Get admin markup for coworking status buttons (full version)."""
         # TODO: Document what a full markup is
         if isinstance(cmessage, types.CallbackQuery):
             cmessage = cmessage.message
-        mkup: InlKbMkup = self.get_admin_markup(cmessage)
-        notifs_on = self.db.get_coworking_notifications(cmessage.chat.id)
-        mkup.add(cwbtn.inl_location_short)
-        mkup.add(InlKbBtn(replies.toggle_coworking_notifications(notifs_on),
-                          callback_data='coworking:toggle_notifications'))
-        mkup.add(InlKbBtn(btntext.INL_COWORKING_STATUS_EXPLAIN,
-                          callback_data='coworking:status:explain'))
-        return mkup
+        markup: InlKbMarkup = self.get_admin_markup(cmessage)
+        notifications_on = self.db.get_coworking_notifications(cmessage.chat.id)
+        markup.add(cwbtn.inl_location_short)
+        markup.add(InlKbBtn(replies.toggle_coworking_notifications(notifications_on),
+                            callback_data='coworking:toggle_notifications'))
+        markup.add(InlKbBtn(btntext.INL_COWORKING_STATUS_EXPLAIN,
+                            callback_data='coworking:status:explain'))
+        return markup

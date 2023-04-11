@@ -2,6 +2,7 @@
 
 from asyncio import sleep
 from datetime import datetime
+from aiogram.types import ContentType
 
 from modules import replies
 from modules.db import CoworkingStatus
@@ -38,7 +39,8 @@ class BotScheduledFunctions:
                     if not self.cwman.notified_open_after_hours_today():
                         # Send broadcast to admins
                         self.log.debug("Sending broadcast to admins about coworking space being open after hours")
-                        await self.broadcast.broadcast(replies.coworking_open_after_hours(), scope="admins")
+                        await self.broadcast.broadcast(replies.coworking_open_after_hours(),
+                                                       "admins", ContentType.TEXT)
                     else:
                         self.log.debug(f"NOT sending broadcast to admins (closed after open time); \
 {self.cwman.notified_closed_during_hours_today()=}")

@@ -21,7 +21,7 @@ class BotHelpFunctions:
             return
         inl_help_menu = InlineKeyboardMarkup(resize_keyboard=True)
         inl_help_menu.add(InlineKeyboardButton(btntext.CREDITS,
-                                               callback_data='credits'))
+                                               callback_data='bot:credits'))
         inl_help_menu.add(InlineKeyboardButton(btntext.COWORKING_LOCATION,
                                                callback_data='coworking:location'))
         await message.answer(replies.help_message(),
