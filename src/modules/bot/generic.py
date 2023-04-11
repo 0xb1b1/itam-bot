@@ -1,4 +1,5 @@
 
+from typing import Union
 from aiogram import types
 from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
@@ -19,15 +20,20 @@ class BotGenericFunctions:
             return True
         return False
 
-    def get_main_keyboard(self, message: types.Message) -> InlineKeyboardMarkup:
+    def get_main_keyboard(self, message: Union[types.Message, int]) -> InlineKeyboardMarkup:
+        user_id = message.from_user.id if isinstance(message, types.Message) else message
         btnClubs = KeyboardButton(btntext.CLUBS_BTN)
         btnCoworkingStatus = KeyboardButton(btntext.COWORKING_STATUS)
         btnProfileInfo = KeyboardButton(btntext.PROFILE_INFO)
         btnHelp = KeyboardButton(btntext.HELP_MAIN)
+        btnBotSkills = KeyboardButton(btntext.BOT_SKILLS_BTN)
         mainMenu = ReplyKeyboardMarkup(row_width=2).add(btnClubs,
-                                                                btnCoworkingStatus,
-                                                                btnProfileInfo,
-                                                                btnHelp)
-        if self.db.is_admin(message.from_user.id):
+                                                        btnCoworkingStatus,
+                                                        btnProfileInfo,
+                                                        btnHelp,
+                                                        btnBotSkills)
+        if self.db.is_admin(user_id):
             mainMenu.add(KeyboardButton(btntext.ADMIN_BTN))
-        return ReplyKeyboardRemove() if self.chat_is_group(message) else mainMenu
+        if isinstance(message, types.Message):
+            return ReplyKeyboardRemove() if self.chat_is_group(message) else mainMenu
+        return mainMenu

@@ -1,6 +1,6 @@
 # region Regular dependencies
 import os
-import logging                               # Logging events
+from logging import Logger
 import asyncio                               # Asynchronous sleep()
 from datetime import datetime
 from typing import Optional, Union
@@ -36,11 +36,11 @@ from modules.bot import decorators as dp  # Bot decorators
 # endregion
 
 # region Passed by setup()
-db = None
-bot = None
-log = None
-bot_broadcast = None
-bot_generic = None
+db: DBManager = None # type: ignore
+bot: Bot = None # type: ignore
+log: Logger = None # type: ignore
+bot_broadcast: BotBroadcastFunctions = None # type: ignore
+bot_generic: BotGenericFunctions = None # type: ignore
 # endregion
 
 # region Lambda functions
@@ -49,7 +49,6 @@ admin_only = lambda message: db.is_admin(message.from_user.id)
 groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
 
-# message text that should be handled sis btntext.CLUBS_BTN
 @dp.message_handler(lambda message: message.text == btntext.CLUBS_BTN)
 async def clubs_menu(message: types.Message):
         await message.answer(replies.club_info_general(),
@@ -71,8 +70,18 @@ async def club_info(call: types.CallbackQuery) -> None:
                                         reply_markup=nav.inlClubsMenu,
                                         parse_mode=ParseMode.MARKDOWN)
         elif club == 'design':
+            keyboard = nav.inlClubsMenu
+            # ( keyboard.add(  # url button
+            #     [InlineKeyboardButton(  # Delimiter button, no action
+            #         text=" ",
+            #         callback_data="sinkhole")],
+            #     [InlineKeyboardButton(
+            #         text="YouTube",
+            #         url="https://www.youtube.com/@design_now"
+            #     )]
+            # ))
             await call.message.edit_text(replies.design_club_info(),
-                                        reply_markup=nav.inlClubsMenu,
+                                        reply_markup=keyboard,
                                         parse_mode=ParseMode.MARKDOWN)
         elif club == 'gamedev':
             await call.message.edit_text(replies.gamedev_club_info(),
@@ -93,7 +102,7 @@ async def club_info(call: types.CallbackQuery) -> None:
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
+          logger: Logger,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     global bot

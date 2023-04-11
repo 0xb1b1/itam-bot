@@ -4,15 +4,19 @@ from datetime import date, datetime, timedelta
 from os import getenv
 from time import sleep
 from sqlalchemy.orm import sessionmaker
-from modules.models import Base, User, UserData
-from modules.models import CoworkingStatus, CoworkingTrustedUser
-from modules.models import Group, GroupType
-from modules.models import ChatSettings
-from modules.models import Coworking, AdminCoworkingNotification
 from sqlalchemy import create_engine
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 from sqlalchemy.exc import OperationalError as sqlalchemyOpError
 from psycopg2 import OperationalError as psycopg2OpError
+# endregion
+
+# region Local imports
+from modules.models import CoworkingStatus, \
+                           CoworkingTrustedUser, \
+                           GroupType, Skill
+from modules.models import Base, User, UserData, UserSkills, \
+                           Group, ChatSettings, \
+                           Coworking, AdminCoworkingNotification
 # endregion
 
 
@@ -22,7 +26,7 @@ class DBManager:
         self.pg_pass = getenv('PG_PASS')
         self.pg_host = getenv('PG_HOST')
         self.pg_port = getenv('PG_PORT')
-        self.pg_db   = getenv('PG_DB')
+        self.pg_db = getenv('PG_DB')
         self.log = log
         connected = False
         while not connected:
@@ -79,7 +83,6 @@ class DBManager:
             if not self.session.query(Group).filter(Group.gtype == group).first():
                 self.add_group(gid=group, name=group.name, gtype=group)
     # endregion
-
 
     # region User management
     def user_exists(self, uid: int) -> bool:
@@ -144,7 +147,6 @@ class DBManager:
         return False
     # endregion
 
-
     # region Group management
     def set_user_group(self, uid: int, gid: int):
         """Set the group id of an admin"""
@@ -180,7 +182,6 @@ class DBManager:
             groups = self.session.query(Group).all()
             return "\n".join([f"{i+1}. {g.name}" for i, g in enumerate(groups)])
     # endregion
-
 
     # region Admin statistics
     def get_users_str(self, gid: int = None) -> str:
@@ -226,12 +227,12 @@ class DBManager:
         }
     # endregion
 
-
     # region User data getters
-    def get_user_data(self, uid: int) -> dict:
+    def get_user_data(self, uid: int) -> dict | None:
         """Get information about a user"""
-        aux = self.session.query(UserData).filter(UserData.uid == uid).first()
         main = self.session.query(User).filter(User.uid == uid).first()
+        aux = self.session.query(UserData).filter(UserData.uid == uid).first()
+        skills = self.session.query(UserSkills).filter(UserSkills.uid == uid).all()
         if main is None:
             return None
         return {
@@ -239,45 +240,35 @@ class DBManager:
             "first_name": main.first_name,
             "last_name": main.last_name,
             "gname": self.get_group_name(main.gid),
-            "resume": aux.resume,
-            "bio": aux.bio,
-            "phone": aux.phone,
-            "email": aux.email,
-            "birthday": aux.birthday
+            "phone": aux.phone if aux else None,
+            "email": aux.email if aux else None,
+            "birthday": aux.birthday if aux else None,
+            "skills": [s.skill for s in skills]
         }
 
-    def get_user_data_short(self, uid: int) -> dict:
-        """Get information about a user"""
-        aux = self.session.query(UserData).filter(UserData.uid == uid).first()
-        main = self.session.query(User).filter(User.uid == uid).first()
-        if main is None:
-            return None
-        return {
-            "uid": main.uid,
-            "first_name": main.first_name,
-            "last_name": main.last_name,
-            "gname": self.get_group_name(main.gid),
-            "phone": aux.phone,
-            "email": aux.email,
-            "birthday": aux.birthday
-        }
-
-    def get_user_data_bio(self, uid: int) -> str:
+    def get_user_data_bio(self, uid: int) -> str | None:
         """Get the bio of a user"""
-        bio = self.session.query(UserData).filter(UserData.uid == uid).first().bio
-        return bio if bio else "Био не установлено"
+        user = (self.session.query(UserData)
+                .filter(UserData.uid == uid)
+                .first())
+        return user.bio if user else "Био не установлено"
 
     def get_user_data_resume(self, uid: int) -> str:
         """Get the resume of a user"""
-        resume = self.session.query(UserData).filter(UserData.uid == uid).first().resume
-        return resume if resume else "Резюме не установлено"
+        user = (self.session.query(UserData)
+                .filter(UserData.uid == uid)
+                .first())
+        return user.resume if user else "Резюме не установлено"
     # endregion
 
-
     # region User data setters
-    def set_user_data_name(self, uid: int, first_name: str, last_name: str) -> Tuple[str, str]:
+    def set_user_data_name(self, uid: int,
+                           first_name: str,
+                           last_name: str) -> Tuple[str, str]:
         """Set first and last names of a user"""
         user = self.session.query(User).filter(User.uid == uid).first()
+        if user is None:
+            raise AttributeError("User not found")
         user.first_name = first_name
         user.last_name = last_name
         self.session.commit()
@@ -286,6 +277,8 @@ class DBManager:
     def set_user_first_name(self, uid: int, first_name: str) -> str:
         """Set the first name of a user"""
         user = self.session.query(User).filter(User.uid == uid).first()
+        if user is None:
+            raise AttributeError("User not found")
         user.first_name = first_name
         self.session.commit()
         return first_name
@@ -293,12 +286,18 @@ class DBManager:
     def set_user_last_name(self, uid: int, last_name: str) -> str:
         """Set the last name of a user"""
         user = self.session.query(User).filter(User.uid == uid).first()
+        if user is None:
+            raise AttributeError("User not found")
         user.last_name = last_name
         self.session.commit()
         return last_name
 
-    def set_user_birthday(self, uid: int, birthday: date) -> datetime:
-        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+    def set_user_birthday(self, uid: int, birthday: date) -> date:
+        user = (self.session.query(UserData)
+                .filter(UserData.uid == uid)
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
         user.birthday = birthday
         self.session.commit()
         return birthday
@@ -308,81 +307,166 @@ class DBManager:
         if "@" not in email or "." not in email:
             raise ValueError("Incorrect email format")
         user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        if user is None:
+            raise AttributeError("User not found")
         user.email = email
         self.session.commit()
         return email
 
     def set_user_phone(self, uid: int, phone: int) -> int:
-        if not 5 < len(str(phone)) < 20 or phone[0] == '-':
+        if not 5 < len(str(phone)) < 20 or str(phone)[0] == '-':
             raise ValueError("Incorrent phone format")
         # Check if phone is of type int
         int(phone)
-        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user = (self.session.query(UserData)
+                .filter(UserData.uid == uid)
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
         user.phone = phone
         self.session.commit()
         return phone
 
     def set_user_data_phone(self, uid: int, phone: str) -> str:
         """Set the phone number of a user"""
-        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user = (self.session.query(UserData)
+                .filter(UserData.uid == uid)
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
         user.phone = phone
         self.session.commit()
         return phone
 
     def set_user_data_email(self, uid: int, email: str) -> str:
         """Set the email of a user"""
-        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user = (self.session.query(UserData)
+                .filter(UserData.uid == uid)
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
         user.email = email
         self.session.commit()
         return email
 
-    def set_user_data_birthday(self, uid: int, birthday: date) -> Tuple[date, str]:
+    def set_user_data_birthday(self,
+                               uid: int,
+                               birthday: date) -> Tuple[date, str]:
         """Set the birthday of a user"""
-        user = self.session.query(UserData).filter(UserData.uid == uid).first()
+        user = (self.session.query(UserData)
+                .filter(UserData.uid == uid)
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
         user.birthday = birthday
         self.session.commit()
         return birthday, birthday.strftime("%d.%m.%Y")
-    # endregion
 
+    def skill_exists(self, uid: int, skill: Skill) -> bool:
+        """Check if a skill exists for a user"""
+        return (self.session.query(UserSkills)
+                .filter(UserSkills.uid == uid,
+                        UserSkills.skill == skill)
+                .first()) is not None
+
+    def add_user_skills(self,
+                        uid: int,
+                        skills: Union[Skill, List[Skill]]) -> None:
+        """Add skills to a user."""
+        if isinstance(skills, Skill):
+            skills = [skills]
+        for s in skills:
+            if not self.skill_exists(uid, s):
+                self.session.add(UserSkills(uid=uid, skill=s))
+        self.session.commit()
+
+    def set_user_skills(self,
+                        uid: int,
+                        skills: Union[Skill, List[Skill]]) -> None:
+        """Set the skills of a user."""
+        self.del_user_skills_all(uid)
+        self.add_user_skills(uid, skills)
+
+    def remove_user_skill(self, uid: int, skill: Skill) -> None:
+        """Delete a skill from a user"""
+        (self.session.query(UserSkills)
+         .filter(UserSkills.uid == uid,
+                 UserSkills.skill == skill)
+         .delete())
+        self.session.commit()
+
+    def del_user_skills_all(self, uid: int) -> None:
+        """Delete all skills from a user"""
+        self.session.query(UserSkills).filter(UserSkills.uid == uid).delete()
+        self.session.commit()
+    # endregion
 
     # region Coworking management
     def get_coworking_status(self) -> CoworkingStatus:
         """Get the status of the coworking space"""
-        return self.session.query(Coworking).order_by(Coworking.id.desc()).first().status
+        user = (self.session.query(Coworking)
+                .order_by(Coworking.id.desc())
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
+        return user.status
 
     def get_coworking_delta(self) -> int:
         """Get the delta of the coworking space"""
-        return self.session.query(Coworking).order_by(Coworking.id.desc()).first().temp_delta
+        user = (self.session.query(Coworking)
+                .order_by(Coworking.id.desc())
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
+        return user.temp_delta
 
-    def set_coworking_status(self, status: CoworkingStatus, uid: int, delta_mins: int = 15) -> CoworkingStatus:
-        """Update the status of the coworking space (add new entry to log)"""
+    def set_coworking_status(self,
+                             status: CoworkingStatus,
+                             uid: int,
+                             delta_mins: int = 15) -> CoworkingStatus:
+        """Update the status of the coworking space (add new entry to log)."""
         if status == CoworkingStatus.temp_closed: #!in [CoworkingStatus.temp_closed, CoworkingStatus.event_open, CoworkingStatus.event_closed]:
             coworking_status = Coworking(status=status, uid=uid, temp_delta=delta_mins, time=datetime.now())
         else:
-            coworking_status = Coworking(status=status, uid=uid, time=datetime.now())
+            coworking_status = Coworking(status=status,
+                                         uid=uid,
+                                         time=datetime.now())
         self.session.add(coworking_status)
         self.session.commit()
         return status
 
     def get_coworking_responsible(self) -> int:
-        """Get the responsible uid for the coworking space key"""
-        return self.session.query(Coworking).order_by(Coworking.id.desc()).first().uid
+        """Get the responsible uid for the coworking space key."""
+        status = (self.session.query(Coworking)
+                  .order_by(Coworking.id.desc())
+                  .first())
+        if status is None:
+            raise AttributeError("Current coworking status not found")
+        return status.uid
 
     def get_coworking_responsible_uname(self) -> str:
-        """Get the responsible uname for the coworking space key"""
+        """Get the responsible uname for the coworking space key."""
         uid: int = self.session.query(Coworking).order_by(Coworking.id.desc()).first().uid
         return self.session.query(User).filter(User.uid == uid).first().uname
 
     def coworking_status_set_uid_responsible(self, uid: int) -> bool:
-        """Set the responsible uid for the coworking space key"""
-        coworking_status = self.session.query(Coworking).order_by(Coworking.id.desc()).first().status
+        """Set the responsible uid for the coworking space key."""
+        coworking_status = (self.session.query(Coworking)
+                            .order_by(Coworking.id.desc())
+                            .first())
+        if coworking_status is None:
+            raise AttributeError("Current coworking status not found")
+        status: CoworkingStatus = coworking_status.status
         # Create new entry
-        self.session.add(Coworking(status=coworking_status, uid=uid, time=datetime.now()))
+        self.session.add(Coworking(status=status,
+                                   uid=uid,
+                                   time=datetime.now()))
         self.session.commit()
         return True
 
     def trim_coworking_status_log(self, limit: int = 10):
-        """Trim the coworking log to the specified limit, starting from the oldest entry"""
+        """Trim the coworking log to the specified limit, \
+           starting from the oldest entry."""
         log = self.get_coworking_log()
         if len(log) > limit:
             for i in range(len(log) - limit):
@@ -391,37 +475,49 @@ class DBManager:
 
     # Trusted users
     def is_coworking_user_trusted(self, uid: int) -> bool:
-        """Check if a user is trusted"""
+        """Check if a user is trusted."""
         admin: bool = self.is_admin(uid)
-        trusted: bool = self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first() is not None
+        trusted: bool = (self.session.query(CoworkingTrustedUser)
+                         .filter(CoworkingTrustedUser.uid == uid)
+                         .first()) is not None
         return admin or trusted
 
     def coworking_trusted_user_add(self, uid: int, admin_uid: int) -> bool:
         """Add a user to trusted coworking users table (CoworkingTrustedUsers)
-        Return False if the user is already trusted, else True"""
-        if self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first() is not None:
+        Return False if the user is already trusted, else True."""
+        if (self.session.query(CoworkingTrustedUser)
+                .filter(CoworkingTrustedUser.uid == uid)
+                .first()) is not None:
             return False
         self.session.add(CoworkingTrustedUser(uid=uid, admin_uid=admin_uid))
         self.session.commit()
         return True
 
     def coworking_trusted_user_del(self, uid: int) -> None:
-        """Remove a user from trusted coworking users table (CoworkingTrustedUsers)"""
-        if self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first() is None:
+        """Remove a user from trusted \
+           coworking users table (CoworkingTrustedUsers)."""
+        if (self.session.query(CoworkingTrustedUser)
+                .filter(CoworkingTrustedUser.uid == uid)
+                .first()) is None:
             return
-        self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).delete()
+        (self.session.query(CoworkingTrustedUser)
+         .filter(CoworkingTrustedUser.uid == uid)
+         .delete())
         self.session.commit()
-        return True
 
     def coworking_trusted_user_get_admin_uid(self, uid: int) -> int:
-        """Get admin_id of a trusted user"""
-        return self.session.query(CoworkingTrustedUser).filter(CoworkingTrustedUser.uid == uid).first().admin_uid
+        """Get admin_id of a trusted user."""
+        user = (self.session.query(CoworkingTrustedUser)
+                .filter(CoworkingTrustedUser.uid == uid)
+                .first())
+        if user is None:
+            raise AttributeError("User not found")
+        return user.admin_uid
     # endregion
-
 
     # region Coworking notifications
     def change_coworking_notifications(self, cid: int, notify: bool) -> None:
-        """Change coworking notifications boolean value for a chat id (cid)"""
+        """Change coworking notifications boolean value for a chat id (cid)."""
         # Check if the chat id is already in the database
         if self.session.query(ChatSettings).filter(ChatSettings.cid == cid).first() is None:
             # If not, add it
@@ -447,7 +543,12 @@ class DBManager:
     def get_coworking_notifications(self, cid: int) -> bool:
         """Get coworking notifications boolean value for a chat id (cid)"""
         try:
-            status = self.session.query(ChatSettings).filter(ChatSettings.cid == cid).first().notifications_enabled
+            user = (self.session.query(ChatSettings)
+                    .filter(ChatSettings.cid == cid)
+                    .first())
+            if user is None:
+                raise AttributeError("Chat not found")
+            status = notifications_enabled
         except AttributeError:
             status = False
         return status
@@ -514,10 +615,11 @@ class DBManager:
         try:
             return self.session.query(Coworking).filter(CoworkingStatus.time.date() == datetime.now().date()).filter(CoworkingStatus.status == CoworkingStatus.open).first() is not None
         except Exception as exc:
-            self.log.error(f"Error while checking if coworking space has been opened today: {exc}")
+            self.log.error(f"Error while checking if coworking space \
+has been opened today: {exc}")
+            return False  # TODO: Raise exception?
     # endregion
     # endregion
-
 
     # region Answer plaintext user messages
     def change_message_answers_status(self, cid: int, enabled: bool) -> None:
@@ -552,7 +654,6 @@ class DBManager:
             self.change_message_answers_status(cid, True)
             return True
     # endregion
-
 
     # region Privelege management
     def get_user_chats(self) -> list:

@@ -15,7 +15,7 @@ class GroupType(enum.IntEnum):
     #club_admins = 2
     users = 3
 
-class Skills(enum.IntEnum):
+class Skill(enum.IntEnum):
     """Skill types, >1 allowed"""
     backend = 0
     frontend = 1
@@ -88,8 +88,9 @@ class UserSkills(Base):
     """User skills model for SQLAlchemy
     Multiple skills per uid are allowed"""
     __tablename__ = 'user_skills'
-    uid = Column(BigInteger, primary_key=True)
-    skill = Column(IntEnum(Skills), default=None)
+    id = Column(BigInteger, primary_key=True)
+    uid = Column(BigInteger)
+    skill = Column(IntEnum(Skill), default=None)
 
 
 class Group(Base):
@@ -123,6 +124,7 @@ class CoworkingTrustedUser(Base):
 
 
 class AdminCoworkingNotification(Base):
+    """Admin coworking notifications model for SQLAlchemy"""
     __tablename__ = 'admin_coworking_notifications'
     id = Column(BigInteger,
                 primary_key=True)

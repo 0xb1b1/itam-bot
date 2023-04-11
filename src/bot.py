@@ -7,38 +7,39 @@ import os
 import logging                               # Logging events
 import asyncio                               # Asynchronous sleep()
 from datetime import datetime
-from typing import Optional, Union
+from typing import Union
 from aiogram import Bot, Dispatcher          # Telegram bot API
 from aiogram import executor, types          # Telegram API
 from aiogram.types.message import ParseMode  # Send Markdown-formatted messages
-from dotenv import load_dotenv               # Load .env file
-from aiogram.dispatcher.filters.builtin import CommandStart
-from aiogram.dispatcher.filters import ChatTypeFilter
+# from dotenv import load_dotenv               # Load .env file
+# from aiogram.dispatcher.filters.builtin import CommandStart
+# from aiogram.dispatcher.filters import ChatTypeFilter
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from aiogram.utils import exceptions
-from sqlalchemy.exc import DataError
+# from aiogram.dispatcher.filters.state import State, StatesGroup
+# from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+# from aiogram.utils import exceptions
+# from sqlalchemy.exc import DataError
 from aiogram.types.message import ContentType
-
 # endregion
+
 # region Local dependencies
-import modules.bot.tools as bot_tools           # Bot tools
-from modules import markup as nav           # Bot menus
+# import modules.bot.tools as bot_tools           # Bot tools
+# from modules import markup as nav           # Bot menus
 from modules import btntext                 # Telegram bot button text
 from modules import replies                 # Telegram bot information output
 from modules import coworking               # Coworking space information
 from modules import replies                 # Telegram bot information output
 from modules.db import DBManager            # Operations with sqlite db
-from modules.models import CoworkingStatus  # Coworking status model
+# from modules.models import CoworkingStatus  # Coworking status model
 from modules.bot.help import BotHelpFunctions  # Bot help menu functions
 from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related functions
 from modules.bot.scheduled import BotScheduledFunctions  # Bot scheduled functions (recurring)
 from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
 from modules.bot.generic import BotGenericFunctions      # Bot generic functions
 from modules.bot.states import *
-from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
+# from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
+# from modules import stickers
 # endregion
 
 # region Logging
@@ -114,16 +115,6 @@ bot_generic = BotGenericFunctions(bot, db, log)
 # endregion
 
 # region Bot replies
-@dp.message_handler(debug_dec, CommandStart())
-async def bot_send_welcome(message: types.Message) -> None:
-    """Send welcome message and init user's record in DB"""
-    await message.answer(replies.welcome_message(message.from_user.first_name),
-                        reply_markup=bot_generic.get_main_keyboard(message))
-    db.add_regular_user(message.from_user.id,
-                        message.from_user.username,
-                        message.from_user.first_name,
-                        message.from_user.last_name)
-
 # region Cancel all states
 @dp.callback_query_handler(lambda c: c.data == 'cancel', state='*')
 @dp.message_handler(state='*', commands=['cancel'])
@@ -137,21 +128,11 @@ async def bot_cancel_handler(cmessage: Union[types.Message, types.CallbackQuery]
     if isinstance(cmessage, types.CallbackQuery):
         await bot.send_message(cmessage.message.chat.id,
                                'Действие отменено',
-                               reply_markup=bot_generic.get_main_keyboard(cmessage))
+                               reply_markup=bot_generic.get_main_keyboard(cmessage.from_user.id))
         return
     await bot.send_message(cmessage.chat.id,
                            'Действие отменено',
                            reply_markup=bot_generic.get_main_keyboard(cmessage))
-# endregion
-
-# region Fix keyboard !TODO: FIX
-@dp.message_handler(commands=['fix'])
-async def fix_keyboard(message: types.Message) -> None:
-    """Fix keyboard"""
-    await bot.send_message(message.from_user.id, "Чиним клавиатуру...", reply_markup=ReplyKeyboardRemove())
-    await asyncio.sleep(0.5)
-    await message.answer("Починили клавиатуру!",
-                         reply_markup=bot_generic.get_main_keyboard(message))
 # endregion
 
 # region Credits
@@ -206,20 +187,26 @@ def run() -> None:
     log.info('Starting AIOgram...')
 
     # region Message handlers
-    from modules.bot.handlers import administration, \
+    from modules.bot.handlers import start, \
+                                     skills, \
+                                     administration, \
                                      coworking_mut, \
                                      coworking_info, \
                                      user_profile, \
                                      broadcast_flow, \
                                      chat_mgr, \
-                                     clubs
+                                     clubs, \
+                                     yandex_internship
+    start.setup(dp, bot, db, log, bot_generic)
+    skills.setup(dp, bot, db, log, bot_generic)
     administration.setup(dp, bot, db, log, bot_broadcast, bot_generic)
-    coworking_mut.setup(dp, bot, db, log, bot_broadcast, bot_generic)
+    coworking_mut.setup(dp, bot, db, log, bot_broadcast, bot_generic, bot_cw)
     coworking_info.setup(dp, bot, db, log, bot_broadcast, bot_generic, bot_cw)
     user_profile.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     broadcast_flow.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     chat_mgr.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     clubs.setup(dp, bot, db, log, bot_broadcast, bot_generic)
+    yandex_internship.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     # endregion
 
     # Add plaintext handler

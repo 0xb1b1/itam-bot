@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Button names for the Telegram bot"""
+"""Button names for the Telegram bot."""
 
 # Menu buttons
 MAIN_MENU = "🏠 Главное меню"
@@ -8,6 +8,7 @@ CLUBS_BTN = "🧑‍💻 Клубы"
 COWORKING_STATUS = "🔑 Коворкинг"
 PROFILE_INFO = "🛂 Профиль"
 HELP_MAIN = "🤨 Помощь"
+BOT_SKILLS_BTN = "🤖 Навыки"
 ADMIN_BTN = "🛠️ Управление"
 
 # Inline admininstration buttons
@@ -19,9 +20,10 @@ INL_COWORKING_STATUS_EXPLAIN = "🤨 Что это?"
 
 # Inline user profile buttons
 NOT_SET = "☔️ Не указано"
-INL_EDIT_PROFILE = "📝 Редактировать профиль"
-INL_EDIT_BIO = "🖋️ Редактировать био"
-INL_EDIT_RESUME = "🧾 Редактировать резюме"
+INL_EDIT_PROFILE = "📝 Редактировать"
+INL_SETUP_PROFILE = "🛂 Настроить"
+INL_EDIT_BIO = "🖋️ Редактировать"
+INL_EDIT_RESUME = "🧾 Редактировать"
 
 # Generic group names
 ADMINS = "🧑‍💼 Администраторы"
@@ -51,3 +53,7 @@ ML_CLUB = "ML"
 CREDITS = "ℹ️ Об авторах"
 COWORKING_LOCATION = "📍 Местоположение коворкинга"
 COWORKING_LOCATION_SHORT = "📍 Местоположение"
+
+# Skills
+BOT_SKILL_YANDEX_INTERNSHIP = "🧑‍💼 Яндекс Стажировка"
+BOT_SKILL_INSTITUTIONS = "🎓 Институты МИСИС"

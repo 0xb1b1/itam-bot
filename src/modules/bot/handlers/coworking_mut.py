@@ -43,6 +43,7 @@ bot = None
 log = None
 bot_broadcast = None
 bot_generic = None
+bot_cw: BotCoworkingFunctions = None
 # endregion
 
 # region Lambda functions
@@ -58,6 +59,8 @@ async def coworking_take_responsibility(call: types.CallbackQuery) -> None:
         await call.answer(replies.coworking_status_already_responsible())
         return
     db.coworking_status_set_uid_responsible(call.from_user.id)
+    # Update inline keyboard in the call message
+    await call.message.edit_reply_markup(reply_markup=bot_cw.get_admin_markup_full(call))
     await call.answer(replies.coworking_status_now_responsible())
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:open', \
@@ -74,6 +77,8 @@ async def coworking_open(call: types.CallbackQuery) -> None:
     coworking.open(call.from_user.id)
     asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.open))
     await call.answer("Коворкинг теперь открыт")
+    # Update inline keyboard in the call message
+    await call.message.edit_reply_markup(reply_markup=bot_cw.get_admin_markup_full(call))
     log.info(f"Coworking opened by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:close', \
@@ -90,6 +95,8 @@ async def coworking_close(call: types.CallbackQuery) -> None:
     coworking.close(call.from_user.id)
     asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.closed))
     await call.answer("Коворкинг теперь закрыт")
+    # Update inline keyboard in the call message
+    await call.message.edit_reply_markup(reply_markup=bot_cw.get_admin_markup_full(call))
     log.info(f"Coworking closed by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:temp_close', \
@@ -105,6 +112,8 @@ async def coworking_temp_close_stage0(call: types.CallbackQuery, state: FSMConte
         return
     # Set AdminCoworkingTempCloseFlow state
     await state.set_state(AdminCoworkingTempCloseFlow.delta.state)
+    # Store call id in state
+    await state.update_data(status_msg_id=call.message.message_id)
     await bot.send_message(call.from_user.id,
                            f"На какое время закрыть коворкинг? (в минутах; можно ввести любое целое число)\n\n{replies.cancel_action()}",
                            reply_markup=nav.coworkingTempCloseDeltaMenu)
@@ -154,6 +163,9 @@ async def coworking_temp_close_stage2(message: types.Message, state: FSMContext)
     asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.temp_closed, delta_mins=delta))
     await message.answer("Коворкинг теперь временно закрыт",
                         reply_markup=bot_generic.get_main_keyboard(message))
+    # Update inline keyboard in the call message (from state)
+    await bot.edit_message_reply_markup(message.from_user.id, data['status_msg_id'],
+                                        reply_markup=bot_cw.get_admin_markup_full(message))
     log.info(f"Coworking temporarily closed by {message.from_user.id} for {delta} minutes")
     await state.finish()
 
@@ -171,6 +183,8 @@ async def coworking_event_open(call: types.CallbackQuery) -> None:
     coworking.event_open(call.from_user.id)
     asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.event_open))
     await call.answer("Коворкинг теперь открыт (с предупреждением о проведении мероприятия)")
+    # Update inline keyboard in the call message
+    await call.message.edit_reply_markup(reply_markup=bot_cw.get_admin_markup_full(call))
     log.info(f"Coworking opened for an event by {call.from_user.id}")
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:event_close', \
@@ -191,6 +205,8 @@ async def coworking_event_close(call: types.CallbackQuery) -> None:
     coworking.event_close(call.from_user.id)
     asyncio.get_event_loop().create_task(bot_broadcast.coworking(CoworkingStatus.event_closed))
     await call.answer("Коворкинг теперь закрыт на мероприятие")
+    # Update inline keyboard in the call message
+    await call.message.edit_reply_markup(reply_markup=bot_cw.get_admin_markup_full(call))
     log.info(f"Coworking closed for an event by {call.from_user.id}")
 
 @dp.callback_query_handler(admin_only, lambda c: c.data == 'coworking:trim_log', \
@@ -201,7 +217,7 @@ async def trim_coworking_status_log(call: types.CallbackQuery) -> None:
     coworking.trim_log(limit=limit)
     await call.answer(f"Лог статуса коворкинга урезан; последние {limit} записей сохранены")
 
-@dp.message_handler(admin_only, command='get_coworking_status_log', \
+@dp.message_handler(admin_only, commands=['get_coworking_status_log'], \
                     chat_type=ChatType.PRIVATE)
 async def get_coworking_status_log(message: types.Message) -> None:
     """Get coworking status log"""
@@ -213,18 +229,21 @@ def setup(dispatcher: Dispatcher,
           database: DBManager,
           logger: logging.Logger,
           broadcast: BotBroadcastFunctions,
-          generic: BotGenericFunctions):
+          generic: BotGenericFunctions,
+          cw: BotCoworkingFunctions):
     global bot
     global db
     global log
     global bot_broadcast
     global bot_generic
     global coworking
+    global bot_cw
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
     log = logger
     db = database
+    bot_cw = cw
     coworking = CoworkingManager(db)
     for func in globals().values():
         if hasattr(func, '_handlers'):
