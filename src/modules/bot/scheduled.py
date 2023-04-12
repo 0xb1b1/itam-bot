@@ -29,7 +29,7 @@ class BotScheduledFunctions:
         while True:
             try:
                 # Set open_time and close_time to current date
-                timed = datetime.now()
+                timed = datetime.utcnow()
                 current_time = int(timed.timestamp())
                 # open_time_ts = int(open_time.replace(year=timed.year, month=timed.month, day=timed.day).timestamp())
                 close_time_ts = int(close_time.replace(year=timed.year, month=timed.month, day=timed.day).timestamp())

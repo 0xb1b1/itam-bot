@@ -45,8 +45,8 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 async def welcome(call: Union[types.CallbackQuery, types.Message]):
     await call.answer()
     await call.message.edit_text(dept_replies.welcome(),
-                                 parse_mode=ParseMode.MARKDOWN,
-                                 reply_markup=nav.skill_departments())
+                                 parse_mode=ParseMode.HTML,
+                                 reply_markup=None)
 
 
 # noinspection PyProtectedMember

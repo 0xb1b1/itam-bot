@@ -50,3 +50,7 @@ class YandexInternship(StatesGroup):
     skills = State()
     finalize = State()
     finalize_later_upsell = State()
+
+
+class YandexInternshipAdminEnrollment(StatesGroup):
+    validate = State()

@@ -38,6 +38,10 @@ def welcome_message_go() -> str:
     return f"""Поехали! 🚀"""
 
 
+def start_command_found_calling_skill() -> str:
+    return "🔎 Диплинк найден! Вызываю навык... 🚀"
+
+
 def start_command_not_found() -> str:
     return "❌ Диплинк не найден. Попробуй /start"
 
@@ -500,3 +504,9 @@ def coworking_status_explain(responsible_uname: str) -> str:
 
 Если у тебя возникнут вопросы, связанные с коворкингом ITAM, [напиши этому человеку в ЛС]\
 (https://t.me/{responsible_uname})!"""
+
+
+# region Yandex Internship
+def yandex_internship_control_panel() -> str:
+    return """🔑 Панель управления Яндекс Стажировкой"""
+# endregion

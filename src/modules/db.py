@@ -16,7 +16,8 @@ from modules.models import CoworkingStatus, \
                            GroupType, Skill
 from modules.models import Base, User, UserData, UserSkills, \
                            Group, ChatSettings, \
-                           Coworking, AdminCoworkingNotification
+                           Coworking, AdminCoworkingNotification, \
+                           YandexInternshipUser
 # endregion
 
 
@@ -246,6 +247,7 @@ class DBManager:
             return None
         return {
             "uid": main.uid,
+            "uname": main.uname,
             "first_name": main.first_name,
             "last_name": main.last_name,
             "gname": self.get_group_name(main.gid),
@@ -324,7 +326,7 @@ class DBManager:
 
     def set_user_phone(self, uid: int, phone: int) -> int:
         if not 5 < len(str(phone)) < 20 or str(phone)[0] == '-':
-            raise ValueError("Incorrent phone format")
+            raise ValueError("Incorrect phone format")
         # Check if phone is of type int
         int(phone)
         user = (self.session.query(UserData)
@@ -435,11 +437,11 @@ class DBManager:
                              delta_mins: int = 15) -> CoworkingStatus:
         """Update the status of the coworking space (add new entry to log)."""
         if status == CoworkingStatus.temp_closed:
-            coworking_status = Coworking(status=status, uid=uid, temp_delta=delta_mins, time=datetime.now())
+            coworking_status = Coworking(status=status, uid=uid, temp_delta=delta_mins, time=datetime.utcnow())
         else:
             coworking_status = Coworking(status=status,
                                          uid=uid,
-                                         time=datetime.now())
+                                         time=datetime.utcnow())
         self.session.add(coworking_status)
         self.session.commit()
         return status
@@ -469,7 +471,7 @@ class DBManager:
         # Create new entry
         self.session.add(Coworking(status=status,
                                    uid=uid,
-                                   time=datetime.now()))
+                                   time=datetime.utcnow()))
         self.session.commit()
         return True
 
@@ -607,7 +609,7 @@ class DBManager:
         if event.status not in CoworkingStatus.closed:
             return False
         # Check if the event happened today (from 00:00 to 23:59)
-        if event.time.date() == datetime.now().date():
+        if event.time.date() == datetime.utcnow().date():
             return True
         return False
 
@@ -637,7 +639,7 @@ class DBManager:
         if event.status not in [CoworkingStatus.open, CoworkingStatus.event_open]:
             return False
         # Check if the event happened today (from 00:00 to 23:59)
-        if event.time.date() == datetime.now().date():
+        if event.time.date() == datetime.utcnow().date():
             return True
         return False
 
@@ -645,7 +647,7 @@ class DBManager:
         """Check if the coworking space has been opened today"""
         try:
             return (self.session.query(Coworking)
-                    .filter(Coworking.time.date() == datetime.now().date())
+                    .filter(Coworking.time.date() == datetime.utcnow().date())
                     .filter(Coworking.status == CoworkingStatus.open)
                     .first()) is not None
         except Exception as exc:
@@ -689,7 +691,7 @@ has been opened today: {exc}")
             return True
     # endregion
 
-    # region Privelege management
+    # region Privilege management
     def get_user_chats(self) -> list:
         """Get a list of all uids with GroupType user."""
         return [i.uid for i in self.session.query(User).filter(User.gid == GroupType.users).all()]
@@ -710,4 +712,163 @@ has been opened today: {exc}")
     def is_superadmin(self, uid: int) -> bool:
         """Check if a user is a super admin."""
         return uid in self.get_superadmin_uids()
+    # endregion
+
+    # region Yandex Internship
+    def get_all_ya_int_users(self) -> list[YandexInternshipUser]:
+        """Get a list of all users of the Yandex Internship (`agree` is either True or False)."""
+        return self.session.query(YandexInternshipUser).all()
+
+    def set_ya_int_user(self, uid: int, agreed: bool):
+        """Set the user's agreement to participate in the Yandex Internship."""
+        if self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first() is not None:
+            self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).delete()
+        self.session.add(YandexInternshipUser(uid=uid, agreed=agreed))
+        self.session.commit()
+
+    def get_ya_int_user(self, uid: int) -> YandexInternshipUser | None:
+        """Get the user's agreement to participate in the Yandex Internship."""
+        if self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first() is None:
+            return None
+        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
+
+    def del_ya_int_user(self, uid: int) -> None:
+        """Delete the user's entry in the Yandex Internship table."""
+        self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).delete()
+        self.session.commit()
+
+    def set_ya_int_agreed(self, uid: int, agreed: bool) -> None:
+        """Set the user's agreement to participate in the Yandex Internship."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"agreed": agreed}))
+        self.session.commit()
+
+    def get_ya_int_is_notified_later(self, uid: int) -> bool:
+        """Get the user's status on upselling Yandex Internship enrollment."""
+        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
+        if user is None:
+            return False
+        return user.is_notified_later
+
+    def set_ya_int_is_notified_later(self, uid: int, is_notified_later: bool):
+        """Set the user's status on upselling Yandex Internship enrollment."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"is_notified_later": is_notified_later}))
+        self.session.commit()
+
+    def get_ya_int_is_registered_by_phone(self, phone: int) -> bool:
+        """Get the user's agreement to participate in the Yandex Internship."""
+        user = self.session.query(User).filter(User.phone == phone).first()
+        if user is None:
+            raise ValueError("User not found")
+        return self.get_ya_int_is_registered(user.uid)
+
+    def set_ya_int_is_registered_by_phone(self, phone: int, is_registered: bool):
+        """Set the user's agreement to participate in the Yandex Internship."""
+        user = self.session.query(UserData).filter(UserData.phone == phone).first()
+        if user is None:
+            raise ValueError("User not found")
+        self.set_ya_int_is_registered(user.uid, is_registered)
+
+    def get_ya_int_is_registered(self, uid: int) -> bool:
+        """Get the user's agreement to participate in the Yandex Internship."""
+        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
+        if user is None:
+            return False
+        return user.is_registered
+
+    def set_ya_int_is_registered(self, uid: int, is_registered: bool):
+        """Set the user's agreement to participate in the Yandex Internship."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"is_registered": is_registered}))
+        self.session.commit()
+
+    def get_ya_int_registered_notified_stage(self, uid: int) -> int:
+        """Get the user's agreement to participate in the Yandex Internship."""
+        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
+        if user is None:
+            return False
+        return user.registered_notified_stage
+
+    def set_ya_int_registered_notified_stage(self, uid: int, registered_notified_stage: int):
+        """Set the user's agreement to participate in the Yandex Internship."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"registered_notified_stage": registered_notified_stage}))
+        self.session.commit()
+
+    def inc_ya_int_registered_notified_stage(self, uid: int):
+        """Set the user's agreement to participate in the Yandex Internship."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"registered_notified_stage": YandexInternshipUser.registered_notified_stage + 1}))
+        self.session.commit()
+
+    def get_ya_int_registered_notified_last_ts(self, uid: int) -> int | None:
+        """Get the last time a registered notified notification has been sent by Yandex Internship."""
+        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
+        if user is None:
+            return False
+        return user.registered_notified_last_ts
+
+    def set_ya_int_registered_notified_last_ts(self, uid: int,
+                                               registered_notified_last_ts: datetime | None = None) -> None:
+        """Set the last time a registered notified notification has been sent by Yandex Internship."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"registered_notified_last_ts": (registered_notified_last_ts
+                                                      if registered_notified_last_ts is not None
+                                                      else datetime.utcnow())}))
+        self.session.commit()
+
+    def set_ya_int_is_registered_confirmed(self, uid: int, is_registered_confirmed: bool):
+        """Set the user's agreement to participate in the Yandex Internship."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"is_registered_confirmed": is_registered_confirmed}))
+        self.session.commit()
+
+    def set_ya_int_is_flow_activated(self, uid: int, is_flow_activated: bool) -> None:
+        """Set the user's agreement to participate in the Yandex Internship."""
+        (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"is_flow_activated": is_flow_activated}))
+        self.session.commit()
+
+    def get_ya_int_is_flow_activated(self, uid: int) -> bool:
+        """Get the user's agreement to participate in the Yandex Internship."""
+        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
+        if user is None:
+            return False
+        return user.is_flow_activated
+
+    def set_ya_int_flow_last_ts(self, uid: int, timestamp: datetime | None = None) -> None:
+        """
+        Set last timestamp of Yandex Internship flow.
+
+        Defaults to datetime.utcnow().
+        """
+        (self.session.query(YandexInternshipUser)
+            .filter(YandexInternshipUser.uid == uid)
+            .update({"flow_last_ts": (timestamp if timestamp is not None else datetime.utcnow())}))
+
+    def set_ya_int_flow_json(self, uid: int, flow_json: dict):
+        """Set the user's agreement to participate in the Yandex Internship."""
+        if self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first() is None:
+            self.session.add(YandexInternshipUser(uid=uid, agreed=False, flow_json=flow_json))
+        else:
+            (self.session.query(YandexInternshipUser)
+             .filter(YandexInternshipUser.uid == uid)
+             .update({"flow_json": flow_json}))
+        self.session.commit()
+
+    def get_ya_int_flow_json(self, uid: int) -> dict:
+        """Get the user's agreement to participate in the Yandex Internship."""
+        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
+        if user is None:
+            return {}
+        return user.flow_json
     # endregion

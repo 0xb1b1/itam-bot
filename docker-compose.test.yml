@@ -12,8 +12,8 @@ services:
       POSTGRES_USER: ${PG_USER}
       POSTGRES_PASSWORD: ${PG_PASS}
       POSTGRES_DB: ${PG_DB}
-    volumes:
-      - "db:/var/lib/postgresql/data"
+#    volumes:
+#      - "db:/var/lib/postgresql/data"
     # ports:
     #   - "6961:5432"  #! Testing only!
 

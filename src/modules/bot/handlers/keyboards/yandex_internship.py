@@ -19,12 +19,11 @@ def get_skill_inl_kb(active_skills: List[Skill]) -> InlKbMkup:
     for skill in skills:
         if skill in active_skills:
             kb.add(InlKbBtn(f'✅ {skill_names[skill.name]}',
-                   callback_data=f'profile:edit:skill:remove:{skill.name}'))
+                   callback_data=f'skill:yandex_internship:setup:skills:remove:{skill.name}'))
         else:
             kb.add(InlKbBtn(f'🅾️ {skill_names[skill.name]}',
-                   callback_data=f'profile:edit:skill:add:{skill.name}'))
-    kb.add(InlKbBtn('Готово',
-                    callback_data='skill:yandex_internship:setup:done'))
+                   callback_data=f'skill:yandex_internship:setup:skills:add:{skill.name}'))
+    kb.add(InlKbBtn('Готово', callback_data='skill:yandex_internship:setup:done'))
     return kb
 
 
@@ -35,4 +34,22 @@ def inl_profile_edit_done_later() -> InlKbMkup:
                     callback_data='skill:yandex_internship:setup:finalize:upsell:agree'))
     kb.add(InlKbBtn('Подожду другого времени',
                     callback_data='skill:yandex_internship:setup:finalize:upsell:later'))
+    return kb
+
+
+def inl_timer_ask_enroll() -> InlKbMkup:
+    """Get inline keyboard for timer ask participate."""
+    kb = InlKbMkup()
+    kb.add(InlKbBtn('Я в деле',
+                    callback_data='skill:yandex_internship:timer:enroll:agree'))
+    kb.add(InlKbBtn('Не в этот раз',
+                    callback_data='skill:yandex_internship:timer:enroll:disagree'))
+    return kb
+
+
+def inl_registration_confirmed() -> InlKbMkup:
+    """Get inline keyboard for registration confirmed."""
+    kb = InlKbMkup()
+    kb.add(InlKbBtn('Начать неделю мотивации',
+                    callback_data='skill:yandex_internship:flow:begin'))
     return kb

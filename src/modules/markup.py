@@ -60,18 +60,16 @@ cwTempClose15Btn = KeyboardButton("15")
 cwTempClose20Btn = KeyboardButton("20")
 cwTempClose30Btn = KeyboardButton("30")
 cwTempClose45Btn = KeyboardButton("45")
-coworkingTempCloseDeltaMenu = (ReplyKeyboardMarkup(resize_keyboard=True)
-                               .add(cwTempClose15Btn,
-                                    cwTempClose20Btn,
-                                    cwTempClose30Btn,
-                                    cwTempClose45Btn))
+coworkingTempCloseDeltaMenu = (ReplyKeyboardMarkup(resize_keyboard=True).add(cwTempClose15Btn,
+                                                                             cwTempClose20Btn,
+                                                                             cwTempClose30Btn,
+                                                                             cwTempClose45Btn))
 
 yandexInternshipSkill = InlKbBtn(btn.BOT_SKILL_YANDEX_INTERNSHIP,
                                  callback_data='skill:yandex_internship')
-botSkillsMenu = (InlKbMarkup(row_width=1)
-                 .add(yandexInternshipSkill,
-                      InlKbBtn(btn.BOT_SKILL_INSTITUTIONS,
-                               callback_data='skill:departments')))
+botSkillsMenu = (InlKbMarkup(row_width=1).add(yandexInternshipSkill,
+                                              InlKbBtn(btn.BOT_SKILL_INSTITUTIONS,
+                                                       callback_data='skill:departments')))
 
 
 def get_skill_inl_kb(active_skills: List[Skill]) -> InlKbMarkup:
@@ -99,7 +97,15 @@ def get_profile_edit_fields_kb() -> InlKbMarkup:
     for key in fields:
         if key in ['uid', 'gname', 'bio', 'resume']:
             continue
-        kb.add(InlKbBtn(fields[key],
-                        callback_data=f'profile:edit:{key}'))
+        kb.add(InlKbBtn(fields[key], callback_data=f'profile:edit:{key}'))
     kb.add(InlKbBtn('Готово', callback_data='profile:edit:done'))
+    return kb
+
+
+def get_yandex_internship_control_kb() -> InlKbMarkup:
+    """Get inline keyboard with Yandex internship control buttons."""
+    # All callbacks are in their respective Yandex Internship modules
+    kb = InlKbMarkup()
+    kb.add(InlKbBtn('📖 Список', callback_data='admin:yandex_internship:enrolled_list'),
+           InlKbBtn('⚙️ Валидировать', callback_data='admin:yandex_internship:validate_enrollment'))
     return kb

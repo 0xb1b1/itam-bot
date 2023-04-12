@@ -5,7 +5,7 @@
 import enum
 from datetime import datetime
 # from sqlalchemy import ForeignKey
-from sqlalchemy import Column, Integer, BigInteger, Boolean, Text, Date, DateTime, TypeDecorator
+from sqlalchemy import Column, Integer, BigInteger, Boolean, Text, Date, DateTime, JSON, TypeDecorator
 from sqlalchemy.orm import declarative_base  # , relationship
 
 Base = declarative_base()
@@ -30,6 +30,9 @@ class Skill(enum.IntEnum):
     design = 6
     robotics = 7
     gamedev = 8
+
+    def __str__(self):
+        return self.name.capitalize()
 
 
 class CoworkingStatus(enum.IntEnum):
@@ -113,19 +116,17 @@ class Group(Base):
 class Coworking(Base):
     """Coworking status model for SQLAlchemy."""
     __tablename__ = 'coworking_status'
-    id = Column(BigInteger,
-                primary_key=True)               # Unique event ID
-    uid = Column(BigInteger)                    # User ID
-    time = Column(DateTime, default=datetime.utcnow)                     # Time of the event
-    status = Column(IntEnum(CoworkingStatus))   # Coworking status
-    temp_delta = Column(Integer, default=None)  # Temporarily closed delta (in minutes)
+    id = Column(BigInteger, primary_key=True)
+    uid = Column(BigInteger)
+    time = Column(DateTime, default=datetime.utcnow)
+    status = Column(IntEnum(CoworkingStatus))
+    temp_delta = Column(Integer, default=None)
 
 
 class CoworkingTrustedUser(Base):
-    __tablename__ = 'coworking_trusted_users'
     """Coworking trusted users model for SQLAlchemy."""
+    __tablename__ = 'coworking_trusted_users'
     uid = Column(BigInteger, primary_key=True, nullable=False)
-    # not null
     admin_uid = Column(BigInteger, nullable=False)
     time = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -133,14 +134,70 @@ class CoworkingTrustedUser(Base):
 class AdminCoworkingNotification(Base):
     """Admin coworking notifications model for SQLAlchemy."""
     __tablename__ = 'admin_coworking_notifications'
-    id = Column(BigInteger,
-                primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     status_id = Column(BigInteger)
 
 
 class ChatSettings(Base):
     """ChatSettings model for SQLAlchemy."""
     __tablename__ = 'chat_settings'
-    cid = Column(BigInteger, primary_key=True)  # Chat ID
+    cid = Column(BigInteger, primary_key=True)
     notifications_enabled = Column(Boolean, default=False)
     plaintext_answers_enabled = Column(Boolean, default=False)
+
+
+yandex_internship_flow_json = {
+    'day_1': {
+        'msg_1': False,
+        'msg_2': False,
+        'msg_3': False
+    },
+    'day_2': {
+        'msg_1': False,
+        'msg_2': False,
+        'msg_3': False,
+        'msg_4': False
+    },
+    'day_3': {
+        'msg_1': False,
+        'msg_2': False,
+        'msg_3': False,
+        'msg_4': False
+    },
+    'day_4': {
+        'msg_1': False,
+        'msg_2': False,
+        'msg_3': False,
+        'msg_4': False
+    },
+    'day_5': {
+        'msg_1': False,
+        'msg_2': False,
+        'msg_3': False
+    },
+}
+
+
+class YandexInternshipUser(Base):
+    """
+    Yandex Internship User (bot skill) model for SQLAlchemy.
+
+    `flow_json` is a dict that contains information about whether the user received a message or not.
+    """
+    __tablename__ = 'skill_yandex_internship_users'
+    uid = Column(BigInteger, primary_key=True)
+    ts = Column(DateTime, default=datetime.utcnow, nullable=False)
+    agreed = Column(Boolean, nullable=False)
+    is_notified_later = Column(Boolean, default=False, nullable=False)
+    is_registered = Column(Boolean, default=False, nullable=False)
+    registered_notified_stage = Column(Integer, default=0, nullable=False)  # 0, 1, 2
+    registered_notified_last_ts = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_registered_confirmed = Column(Boolean, default=False, nullable=False)
+    is_flow_activated = Column(Boolean, default=False, nullable=False)
+    flow_last_ts = Column(DateTime, default=datetime.utcnow, nullable=False)
+    flow_json = Column(JSON, default=yandex_internship_flow_json, nullable=False)
+
+    def __repr__(self):
+        return f'<YandexInternshipUser {self.uid=}, {self.ts=}, {self.agreed=}, {self.is_notified_later=}, \
+{self.is_registered=}, {self.registered_notified_stage=}, {self.registered_notified_last_ts=}, \
+{self.is_registered_confirmed}, {self.is_flow_activated=}, {self.flow_last_ts=}, {self.flow_json=}>'

@@ -13,11 +13,8 @@ from logging import Logger
 # import modules.bot.tools as bot_tools
 from modules import markup as nav
 from modules import btntext
-from modules.coworking import Manager as CoworkingManager
-# from modules import replies
 from modules.db import DBManager
 from modules.bot.generic import BotGenericFunctions
-# from modules.buttons import coworking as cwbtn
 from modules.bot import decorators as dp
 from .replies import skills as sk_replies
 # endregion
@@ -39,6 +36,11 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 
 @dp.message_handler(lambda message: message.text == btntext.BOT_SKILLS_BTN)
 async def bot_skills_menu(message: types.Message):
+    if not db.user_exists(message.from_user.id):
+        await db.add_regular_user(message.from_user.id,
+                                  message.from_user.username,
+                                  message.from_user.first_name,
+                                  message.from_user.last_name)
     await message.answer(sk_replies.bot_skills_menu(), reply_markup=nav.botSkillsMenu)
 
 

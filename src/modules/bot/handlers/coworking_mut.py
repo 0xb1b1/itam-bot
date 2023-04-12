@@ -222,7 +222,7 @@ async def trim_coworking_status_log(call: types.CallbackQuery) -> None:
     """Trim coworking log."""
     limit = 10  # TODO: make this configurable
     coworking.trim_log(limit=limit)
-    await call.answer(f"Лог статуса коворкинга урезан; последние {limit} записей сохранены")
+    await call.answer(f"Лог статуса коворкинг пространства урезан; последние {limit} записей сохранены")
 
 
 @dp.message_handler(admin_only, commands=['get_coworking_status_log'],

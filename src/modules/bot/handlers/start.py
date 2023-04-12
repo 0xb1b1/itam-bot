@@ -50,23 +50,24 @@ async def bot_send_welcome(message: Union[types.Message, types.CallbackQuery], u
         args = message.get_args().split(',')
         user_first_name = message.from_user.first_name
     args_empty = args[0] == ''
-    await message.answer(replies.welcome_message(user_first_name),
-                         reply_markup=ReplyKeyboardRemove())
-    if args_empty:
-        await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
-        await asyncio.sleep(1.3)
-        await message.answer(replies.welcome_message_instructions())
-    await bot.send_chat_action(message.chat.id, ChatActions.CHOOSE_STICKER)
-    await asyncio.sleep(0.7)
-    await bot.send_sticker(message.chat.id, stickers.WELCOME)
     db.add_regular_user(message.from_user.id,
                         message.from_user.username,
                         message.from_user.first_name,
                         message.from_user.last_name)
     if args_empty:
+        await message.answer(replies.welcome_message(user_first_name),
+                             reply_markup=ReplyKeyboardRemove())
+        await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
+        await asyncio.sleep(1.3)
+        await message.answer(replies.welcome_message_instructions())
+        await bot.send_chat_action(message.chat.id, ChatActions.CHOOSE_STICKER)
+        await asyncio.sleep(0.7)
+        await bot.send_sticker(message.chat.id, stickers.WELCOME)
         await bot.send_message(message.chat.id, replies.welcome_message_go(),
                                reply_markup=bot_generic.get_main_keyboard(message))
     if not args_empty:
+        await message.answer(replies.start_command_found_calling_skill(),
+                             reply_markup=ReplyKeyboardRemove())
         await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
         await asyncio.sleep(0.5)
         if args[0] == 'ya_int':

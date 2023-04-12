@@ -21,6 +21,7 @@ from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import AdminChangeUserGroup, AdminGetObjectId
 from modules.bot import decorators as dp  # Bot decorators
+from modules import markup as nav
 # endregion
 
 # region Passed by setup()
@@ -48,8 +49,11 @@ async def admin_panel(message: types.Message):
                                                       callback_data='change_user_group')
     inl_admin_broadcast_btn = InlineKeyboardButton(btntext.INL_ADMIN_BROADCAST,
                                                    callback_data='admin:broadcast')
+    inl_admin_yandex_internship_btn = InlineKeyboardButton(btntext.INL_ADMIN_YANDEX_INTERNSHIP,
+                                                           callback_data='admin:yandex_internship')
     markup = InlineKeyboardMarkup().add(inl_admin_change_group_btn,
-                                        inl_admin_broadcast_btn)
+                                        inl_admin_broadcast_btn,
+                                        inl_admin_yandex_internship_btn)
     await message.answer(replies.admin_panel(),
                          reply_markup=markup)
     log.info(f"User {message.from_user.id} opened the admin panel")
@@ -165,29 +169,45 @@ async def get_users_verbose(message: types.Message):
 @dp.message_handler(admin_only, commands=['get_id'])
 async def get_id(message: types.Message):
     """Get sticker ID."""
-    await message.answer("Send me a sticker and I'll reply with its ID")
+    await message.answer("Send me a media object and I'll reply with its ID")
     await AdminGetObjectId.get.set()
 
 
 @dp.message_handler(state=AdminGetObjectId.get,
                     content_types=[ContentType.STICKER,
                                    ContentType.DOCUMENT,
-                                   ContentType.PHOTO])
+                                   ContentType.PHOTO,
+                                   ContentType.ANIMATION,
+                                   ContentType.VIDEO_NOTE])
 async def reply_with_id(message: types.Message):
     """Reply with sticker ID."""
     # Get message type
     msg_type = message.content_type
-    msg = f"Content type is {msg_type}\nID: "
+    msg = f"Content type is {msg_type}\n"
     if msg_type == 'sticker':
-        msg += f'`{message.sticker.file_id}`'
+        msg += f'{message.sticker.file_id}'
     elif msg_type == 'document':
-        msg += f'`{message.document.file_id}`'
+        msg += f'{message.document.file_id}'
     elif msg_type == 'photo':
-        msg += f'`{message.photo[-1].file_id}`'
+        msg += f'{message.photo[-1].file_id}'
+    elif msg_type == 'animation':
+        msg += f'{message.animation.file_id}'
+    elif msg_type == 'video_note':
+        msg += f'{message.video_note.file_id}'
     else:
         msg = "(I can't get ID from this message)"
-    await message.answer(msg + "\n\n" + replies.cancel_action(),
-                         parse_mode=ParseMode.MARKDOWN)
+    await message.reply(msg + "\n\n" + replies.cancel_action())
+# endregion
+
+
+# region Yandex Internship
+@dp.callback_query_handler(lambda c: c.data == 'admin:yandex_internship')
+async def yandex_control_panel(call: types.CallbackQuery):
+    """Yandex Internship control panel."""
+    await call.answer()
+    await call.message.answer(replies.yandex_internship_control_panel(),
+                              reply_markup=nav.get_yandex_internship_control_kb())
+
 # endregion
 
 
