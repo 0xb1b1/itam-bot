@@ -3,7 +3,7 @@
 
 """Yandex Internship Skill asyncio event loops."""
 from asyncio import sleep as asleep
-from datetime import datetime
+from datetime import datetime, timedelta
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup as InlKbMarkup, InlineKeyboardButton as InlKbBtn
 from logging import Logger
@@ -140,32 +140,27 @@ async def yandex_internship_loop(db: DBManager, bot: Bot, log: Logger):
                 # If more than 2 days passed since the user started the skill,
                 # send them a message asking them to agree (with two buttons)
                 # (after 9AM UTC and before 5PM UTC)
-                # if (datetime.utcnow() - timestamp).days >= 2 and 9 <= datetime.utcnow().hour <= 17\
-                #         and not user.is_notified_later:
-
-                # TODO: Testing timing. Remove after testing.
-                if (datetime.utcnow() - timestamp).seconds >= 10 and 9 <= datetime.utcnow().hour <= 17\
+                if (datetime.utcnow() - timestamp).days >= 2 and 9 <= datetime.utcnow().hour <= 17\
                         and not user.is_notified_later:
-                    await bot.send_message(user.uid, ya_replies.timer_ask_enroll(),
-                                           reply_markup=ya_kbs.inl_timer_ask_enroll())
+                    try:
+                        await bot.send_message(user.uid, ya_replies.timer_ask_enroll(),
+                                               reply_markup=ya_kbs.inl_timer_ask_enroll())
+                    except Exception as exc:
+                        log.error(f"[Yandex Internship] Failed to send timed enrollment message to user {user.uid}: \
+{exc}")
                     db.set_ya_int_is_notified_later(user.uid, True)
                     log.debug(f"[Yandex Internship] Sent timed enrollment message to user {user.uid}")
 
-            else:
+            else:  # TODO: Add a check to not check the user's messages if the last message has been marked as sent
                 # If the user agreed, check whether they have been validated by an admin
                 # If this is the case, ask user to confirm registration
                 if (user.is_registered
                         and not user.is_registered_confirmed
                         and not user.registered_notified_stage >= 3):
-                    # if 17 <= datetime.utcnow().hour <= 18:
-                    # TODO: Testing timing. Remove after testing.
-                    if True:
+                    if 17 <= datetime.utcnow().hour <= 18:
                         # Check if the previous message was sent more than 20 hours ago
                         # If so, send a new message
-                        # if (datetime.utcnow() - user.registered_notified_ts).hour >= 20:
-
-                        # TODO: Testing timing. Remove after testing.
-                        if (datetime.utcnow() - user.registered_notified_last_ts).seconds >= 10:
+                        if (datetime.utcnow() - user.registered_notified_last_ts) >= timedelta(hours=20):
                             kb = InlKbMarkup()
                             match user.registered_notified_stage:
                                 case 0:
@@ -184,9 +179,13 @@ async def yandex_internship_loop(db: DBManager, bot: Bot, log: Logger):
                                     text = "UNKNOWN STAGE"
                                     kb.add(InlKbBtn("UNKNOWN STAGE",
                                                     callback_data='sinkhole'))
-                            await bot.send_message(user.uid, text,
-                                                   parse_mode=ParseMode.HTML,
-                                                   reply_markup=kb)
+                            try:
+                                await bot.send_message(user.uid, text,
+                                                       parse_mode=ParseMode.HTML,
+                                                       reply_markup=kb)
+                            except Exception as exc:
+                                log.error(f"[Yandex Internship] Failed to send timed registration confirmation \
+message to user {user.uid}: {exc}")
                             db.inc_ya_int_registered_notified_stage(user.uid)
                             db.set_ya_int_registered_notified_last_ts(user.uid)
                             log.debug(f"[Yandex Internship] Sent timed registration confirmation \
@@ -208,46 +207,58 @@ message to user {user.uid}")
                     user_json = dict(user.flow_json)
                     log.debug(f"[Yandex Internship] user_json for user {user.uid}: {user_json}")
                     # Run if user.flow_last_ts is at least 22 hours ago
-                    # if (datetime.utcnow() - user.flow_last_ts).hours >= 22:
-                    # TODO: Testing timing. Remove after testing.
                     log.debug("User flow last ts: " + str(user.flow_last_ts))
-                    if (datetime.utcnow() - user.flow_last_ts).seconds >= 40:
+                    first_day_sent = user_json['day_1']['msg_1'] and user_json['day_1']['msg_2'] \
+                        and user_json['day_1']['msg_3']
+                    if not first_day_sent or (datetime.utcnow() - user.flow_last_ts) >= timedelta(hours=22):
                         for day in user_json:
                             message_found = False
                             log.debug(f"[Yandex Internship] Checking timed flow message (day: \
 `{day} to user {user.uid}")
                             for msg in user_json[day].items():
                                 if msg[1]:  # If the message has already been sent, skip it
+                                    log.debug(f"[Yandex Internship] Skipping timed flow message (day: `{day}` | \
+msg: `{msg[0]}` to user {user.uid}: message already sent")
                                     continue
                                 # Check if the current hour is greater or equal to the hour_start of the message
                                 # If so, send the message and set the flag to True
-                                if datetime.utcnow().hour >= flow_timeline[day][msg[0]]['hour_start']:
+                                hr_start = flow_timeline[day][msg[0]]['hour_start']
+                                log.debug(f"[Yandex Internship] Checking day {day} | msg {msg[0]} for user {user.uid} \
+| {hr_start=} | {datetime.utcnow().hour=}, condition is {hr_start + 4 > datetime.utcnow().hour >= hr_start}")
+                                if hr_start + 4 > datetime.utcnow().hour >= hr_start:
                                     log.debug(f"[Yandex Internship] Sending timed flow message (day: `{day}` | \
     msg: `{msg[0]}` to user {user.uid}")
-                                    for video_note in flow_timeline[day][msg[0]]['video_notes']:
-                                        await bot.send_chat_action(user.uid, ChatActions.UPLOAD_VIDEO_NOTE)
-                                        await asleep(0.7)
-                                        await bot.send_video_note(user.uid, video_note)
-                                    for text in flow_timeline[day][msg[0]]['text']:
-                                        await bot.send_chat_action(user.uid, ChatActions.TYPING)
-                                        await asleep(0.5)
-                                        await bot.send_message(user.uid, text, parse_mode=ParseMode.HTML)
-                                    # If field `documents` exists, send the documents
-                                    if 'documents' in flow_timeline[day][msg[0]]:
-                                        for document in flow_timeline[day][msg[0]]['documents']:
-                                            await bot.send_chat_action(user.uid, ChatActions.UPLOAD_DOCUMENT)
+                                    try:
+                                        for video_note in flow_timeline[day][msg[0]]['video_notes']:
+                                            await bot.send_chat_action(user.uid, ChatActions.UPLOAD_VIDEO_NOTE)
                                             await asleep(0.7)
-                                            await bot.send_document(user.uid, document)
-                                    if 'animations' in flow_timeline[day][msg[0]]:
-                                        for animation in flow_timeline[day][msg[0]]['animations']:
-                                            await bot.send_chat_action(user.uid, ChatActions.UPLOAD_DOCUMENT)
-                                            await asleep(0.7)
-                                            await bot.send_animation(user.uid, animation)
+                                            await bot.send_video_note(user.uid, video_note)
+                                        for text in flow_timeline[day][msg[0]]['text']:
+                                            await bot.send_chat_action(user.uid, ChatActions.TYPING)
+                                            await asleep(0.5)
+                                            await bot.send_message(user.uid, text, parse_mode=ParseMode.HTML)
+                                        # If field `documents` exists, send the documents
+                                        if 'documents' in flow_timeline[day][msg[0]]:
+                                            for document in flow_timeline[day][msg[0]]['documents']:
+                                                await bot.send_chat_action(user.uid, ChatActions.UPLOAD_DOCUMENT)
+                                                await asleep(0.7)
+                                                await bot.send_document(user.uid, document)
+                                        if 'animations' in flow_timeline[day][msg[0]]:
+                                            for animation in flow_timeline[day][msg[0]]['animations']:
+                                                await bot.send_chat_action(user.uid, ChatActions.UPLOAD_DOCUMENT)
+                                                await asleep(0.7)
+                                                await bot.send_animation(user.uid, animation)
+                                    except Exception as exc:
+                                        log.error(f"[Yandex Internship] Failed to send timed flow message \
+(day: `{day}` | msg: `{msg[0]}` to user {user.uid}: {exc}")
                                     user_json[day][msg[0]] = True
                                     db.set_ya_int_flow_json(user.uid, user_json)
                                     db.set_ya_int_flow_last_ts(user.uid)
                                     log.debug(f"[Yandex Internship] Sent timed flow message (day: `{day}` | \
     msg: `{msg[0]}` to user {user.uid}")
+                                    message_found = True
+                                    break
+                                else:  # If not in constraints, flag message_found and break
                                     message_found = True
                                     break
                             if message_found:

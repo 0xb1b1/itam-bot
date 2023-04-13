@@ -54,3 +54,6 @@ class YandexInternship(StatesGroup):
 
 class YandexInternshipAdminEnrollment(StatesGroup):
     validate = State()
+    del_user = State()
+    time_travel_phone = State()
+    time_travel_hours = State()

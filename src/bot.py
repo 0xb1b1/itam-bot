@@ -11,15 +11,8 @@ from typing import Union
 from aiogram import Bot, Dispatcher          # Telegram bot API
 from aiogram import executor, types          # Telegram API
 from aiogram.types.message import ParseMode  # Send Markdown-formatted messages
-# from dotenv import load_dotenv               # Load .env file
-# from aiogram.dispatcher.filters.builtin import CommandStart
-# from aiogram.dispatcher.filters import ChatTypeFilter
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
-# from aiogram.dispatcher.filters.state import State, StatesGroup
-# from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
-# from aiogram.utils import exceptions
-# from sqlalchemy.exc import DataError
 from aiogram.types.message import ContentType
 # endregion
 
@@ -27,7 +20,7 @@ from aiogram.types.message import ContentType
 # import modules.bot.tools as bot_tools           # Bot tools
 # from modules import markup as nav           # Bot menus
 from modules import btntext                 # Telegram bot button text
-from modules import replies                 # Telegram bot information output
+# from modules import replies                 # Telegram bot information output
 from modules import coworking               # Coworking space information
 from modules import replies                 # Telegram bot information output
 from modules.db import DBManager            # Operations with sqlite db
@@ -37,7 +30,7 @@ from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related
 from modules.bot.scheduled import BotScheduledFunctions  # Bot scheduled functions (recurring)
 from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
 from modules.bot.generic import BotGenericFunctions      # Bot generic functions
-from modules.bot.states import *
+# from modules.bot.states import *
 # from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
 # from modules import stickers
 # endregion
@@ -83,7 +76,8 @@ elif logging_level_lower == 'critical':
 # endregion
 
 # region Lambda functions
-debug_dec = lambda message: log.debug(f'User {message.from_user.id} from chat {message.chat.id} called command `{message.text}`') or True
+debug_dec = lambda message: log.debug(f'User {message.from_user.id} from chat {message.chat.id} \
+called command `{message.text}`') or True
 admin_only = lambda message: db.is_admin(message.from_user.id)
 groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
@@ -114,11 +108,13 @@ bot_broadcast = BotBroadcastFunctions(bot, db, log)
 bot_generic = BotGenericFunctions(bot, db, log)
 # endregion
 
+
 # region Bot replies
 # region Cancel all states
 @dp.callback_query_handler(lambda c: c.data == 'cancel', state='*')
 @dp.message_handler(state='*', commands=['cancel'])
-@dp.message_handler(lambda message: message.text.lower() == 'cancel' or message.text.lower() == btntext.CANCEL.lower(), state='*')
+@dp.message_handler(lambda message: message.text.lower() == 'cancel' or message.text.lower() == btntext.CANCEL.lower(),
+                    state='*')
 async def bot_cancel_handler(cmessage: Union[types.Message, types.CallbackQuery], state: FSMContext):
     """Allow user to cancel any action"""
     log.debug(f"User {cmessage.from_user.id} canceled an action")
@@ -135,6 +131,7 @@ async def bot_cancel_handler(cmessage: Union[types.Message, types.CallbackQuery]
                            reply_markup=bot_generic.get_main_keyboard(cmessage))
 # endregion
 
+
 # region Credits
 @dp.callback_query_handler(lambda c: c.data == 'bot:credits')
 async def bot_credits(call: types.CallbackQuery) -> None:
@@ -143,16 +140,19 @@ async def bot_credits(call: types.CallbackQuery) -> None:
                                  parse_mode=ParseMode.MARKDOWN)
 # endregion
 
+
 # region Help
 @dp.message_handler(lambda message: message.text == btntext.HELP_MAIN)
 @dp.message_handler(commands=['help'])
 async def bot_help_menu(message: types.Message):
     await bot_help.main(message)
 
+
 @dp.callback_query_handler(lambda c: c.data == 'coworking:location')
 async def bot_coworking_location(call: types.CallbackQuery) -> None:
     await bot_help.location(call)
 # endregion
+
 
 # Normal messages
 async def answer(message: types.Message) -> None:
@@ -162,7 +162,7 @@ async def answer(message: types.Message) -> None:
             if db.does_user_exist(message.from_user.id):
                 db.set_uname(message.from_user.id, message.from_user.username)
             else:
-                message.answer(replies.please_click_start())
+                await message.answer(replies.please_click_start())
     # Menus
     text_lower = message.text.lower()
 
@@ -172,31 +172,38 @@ async def answer(message: types.Message) -> None:
             log.debug(f"Received a message in a group, but plaintext_message_answers is False for {message.chat.id}")
             return
 
-    if any(word in text_lower for word in ['коворк', 'кв']) and any(word in text_lower for word in ['статус', 'открыт', 'закрыт']):
+    if any(word in text_lower for word in ['коворк', 'кв']) and any(word in text_lower for word in ['статус',
+                                                                                                    'открыт',
+                                                                                                    'закрыт']):
         await message.answer(replies.coworking_status_reply(coworking.get_status(),
                                                             responsible_uname=db.get_coworking_responsible_uname()),
                              reply_markup=bot_generic.get_main_keyboard(message))
 # endregion
 
+
 # region StartUp
 def run() -> None:
     loop = asyncio.get_event_loop()
-    loop.create_task(bot_scheduled.coworking_status_checker(datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_OPENING_TIME", "09:00:00")}', '%Y-%m-%d %H:%M:%S'),
-                                                            datetime.strptime(f'2021-09-01 {os.getenv("COWORKING_CLOSING_TIME", "19:00:00")}', '%Y-%m-%d %H:%M:%S'),
-                                                            timeout=int(os.getenv('COWORKING_STATUS_WORKER_TIMEOUT', '120'))))
-    log.info('Starting AIOgram...')
+    loop.create_task(bot_scheduled.coworking_status_checker(datetime.strptime(f'2021-09-01 \
+{os.getenv("COWORKING_OPENING_TIME", "09:00:00")}', '%Y-%m-%d %H:%M:%S'),
+                                                            datetime.strptime(f'2021-09-01 \
+{os.getenv("COWORKING_CLOSING_TIME", "19:00:00")}', '%Y-%m-%d %H:%M:%S'),
+                                                            timeout=int(os.getenv('COWORKING_STATUS_WORKER_TIMEOUT',
+                                                                                  '120'))))
+    log.info('Starting AIOGram...')
 
     # region Message handlers
     from modules.bot.handlers import start, \
-                                     skills, \
-                                     administration, \
-                                     coworking_mut, \
-                                     coworking_info, \
-                                     user_profile, \
-                                     broadcast_flow, \
-                                     chat_mgr, \
-                                     clubs, \
-                                     yandex_internship
+        skills, \
+        administration, \
+        coworking_mut, \
+        coworking_info, \
+        user_profile, \
+        broadcast_flow, \
+        chat_mgr, \
+        clubs, \
+        departments, \
+        yandex_internship
     start.setup(dp, bot, db, log, bot_generic)
     skills.setup(dp, bot, db, log, bot_generic)
     administration.setup(dp, bot, db, log, bot_broadcast, bot_generic)
@@ -206,6 +213,7 @@ def run() -> None:
     broadcast_flow.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     chat_mgr.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     clubs.setup(dp, bot, db, log, bot_broadcast, bot_generic)
+    departments.setup(dp, bot, db, log, bot_generic)
     yandex_internship.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     # endregion
 

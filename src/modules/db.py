@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # region Dependencies
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from os import getenv
 from time import sleep
 from sqlalchemy.orm import sessionmaker
@@ -871,4 +871,25 @@ has been opened today: {exc}")
         if user is None:
             return {}
         return user.flow_json
+
+    def get_uid_by_phone(self, phone: int) -> int | None:
+        """Get user by phone."""
+        user = self.session.query(UserData).filter(UserData.phone == phone).first()
+        if user is None:
+            return None
+        return user.uid
+
+    # region Debug
+    def dec_ya_int_user_timestamps(self, phone: int, delta: timedelta) -> None:
+        """Decrease user's timestamps by delta."""
+        uid = self.get_uid_by_phone(phone)
+        if uid is None:
+            raise AttributeError("User not found")
+        self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).update({
+            "ts": YandexInternshipUser.ts - delta,
+            "flow_last_ts": YandexInternshipUser.flow_last_ts - delta,
+            "registered_notified_last_ts": YandexInternshipUser.registered_notified_last_ts - delta,
+        })
+        self.session.commit()
+    # endregion
     # endregion

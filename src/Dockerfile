@@ -14,6 +14,9 @@ COPY bot.py .
 COPY __main__.py .
 COPY modules/ ./modules/
 
+# Compile Python 3 source code into bytecode
+RUN python3 -m compileall .
+
 # Create data directory
 RUN mkdir -p /data/logs
 

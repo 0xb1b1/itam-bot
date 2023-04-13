@@ -60,7 +60,8 @@ def skill_names() -> dict:
         'mobile_dev': 'Мобильная разработка',
         'design': 'Дизайн',
         'robotics': 'Робототехника',
-        'gamedev': 'Геймдев'
+        'gamedev': 'Геймдев',
+        'machine_learning': 'Машинное обучение'
     }
 
 
@@ -273,7 +274,7 @@ def coworking_status_reply(status: CoworkingStatus,
     status_icon, status_str = get_coworking_status_reply_data(status,
                                                               responsible_uname=responsible_uname,
                                                               delta_mins=delta_mins)
-    return f"🔑{status_icon} Коворкинг ITAM (Г-511) {status_str}"
+    return f"🔑{status_icon} Коворкинг ITAM {status_str}"
 
 
 def switch_coworking_status_inline_binary_action(status: CoworkingStatus) -> str:
@@ -304,7 +305,7 @@ def coworking_status_changed(status: CoworkingStatus,
     status_icon, status_str = get_coworking_status_reply_data(status,
                                                               responsible_uname=responsible_uname,
                                                               delta_mins=delta_mins)
-    return f"🔑{status_icon} Коворкинг ITAM (Г-511) {status_str}"
+    return f"🔑{status_icon} Коворкинг ITAM {status_str}"
 
 
 def coworking_status_not_binary() -> str:
@@ -351,7 +352,6 @@ def admin_panel() -> str:
 
 🧑‍💻 Администрация
 /admin — 🛂 Показать эту панель
-/stats — 📊 Показать статистику
 
 💃 Пользователи
 /get_users — 📋 Получить список пользователей
@@ -359,7 +359,6 @@ def admin_panel() -> str:
 /get_notif_db — 📋🔔 Получить список пользователей и их настройки уведомлений
 
 🦊 Разное
-/broadcast — 📢 Создать рассылку
 /cancel — ❌ Отменить любой flow"""
 
 
@@ -368,7 +367,7 @@ def stats(statistics: dict) -> str:
     cw_icon, cw_status = get_coworking_status_reply_data(statistics["coworking_status"],
                                                          responsible_account=False)
     cw_status = f"{cw_icon} {cw_status}"
-    return f"""📊 Статистика
+    return f"""📊 Статистика на {datetime.utcnow().strftime("%d.%m.%Y %H:%M:%S")} UTC+0
 
 💃 Пользователей: {statistics['users']}
 🧑‍💻 Администраторов: {statistics['admins']}

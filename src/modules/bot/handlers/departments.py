@@ -3,7 +3,6 @@
 
 """Bot department handlers."""
 # region Regular dependencies
-import logging
 from typing import Union
 from aiogram import Bot, Dispatcher
 from aiogram import types
@@ -53,16 +52,13 @@ async def welcome(call: Union[types.CallbackQuery, types.Message]):
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
-          broadcast: BotBroadcastFunctions,
+          logger: Logger,
           generic: BotGenericFunctions):
     global bot
     global db
     global log
-    global bot_broadcast
     global bot_generic
     bot = bot_obj
-    bot_broadcast = broadcast
     bot_generic = generic
     log = logger
     db = database

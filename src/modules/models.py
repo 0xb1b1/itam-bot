@@ -30,9 +30,10 @@ class Skill(enum.IntEnum):
     design = 6
     robotics = 7
     gamedev = 8
+    machine_learning = 9
 
     def __str__(self):
-        return self.name.capitalize()
+        return self.name.capitalize().replace('_', ' ')
 
 
 class CoworkingStatus(enum.IntEnum):

@@ -3,8 +3,10 @@
 """Bot Yandex Internship skill handlers."""
 # region Regular dependencies
 import io
+from datetime import datetime
 from asyncio import sleep as asleep, get_event_loop
 from typing import Union
+from datetime import timedelta
 from aiogram import Bot, Dispatcher
 from aiogram import types
 from aiogram.types.message import ParseMode
@@ -49,15 +51,9 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
 
 # region Menus
-inlStartAgree = InlineKeyboardButton("Да, я в деле",
-                                     callback_data="skill:yandex_internship\
-:welcome:agree")
-inlStartLater = InlineKeyboardButton("Создать анкету",
-                                     callback_data="skill:yandex_internship\
-:welcome:later")
-inlStartDisagree = InlineKeyboardButton("Не сейчас",
-                                        callback_data="skill:yandex_internship\
-:welcome:disagree")
+inlStartAgree = InlineKeyboardButton("Да, я в деле", callback_data="skill:yandex_internship:welcome:agree")
+inlStartLater = InlineKeyboardButton("Создать анкету", callback_data="skill:yandex_internship:welcome:later")
+inlStartDisagree = InlineKeyboardButton("Не сейчас", callback_data="skill:yandex_internship:welcome:disagree")
 inlStartMenu = InlineKeyboardMarkup(row_width=2).add(inlStartDisagree,
                                                      inlStartLater,
                                                      inlStartAgree)
@@ -96,8 +92,11 @@ async def welcome_disagree(call: types.CallbackQuery):
     await call.answer()
     # Delete three messages (call.message and two previous)
     for i in range(4):
-        await bot.delete_message(call.message.chat.id,
-                                 call.message.message_id - i)
+        try:
+            await bot.delete_message(call.message.chat.id,
+                                     call.message.message_id - i)
+        except Exception as exc:
+            log.debug(f"[Yandex Internship] Failed to delete message {i} in welcome_disagree: {exc}")
         await asleep(0.3)
     await bot.send_message(call.from_user.id, ya_replies.welcome_disagree(),
                            reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
@@ -191,6 +190,7 @@ async def setup_skills(call: Union[types.CallbackQuery, types.Message],
             await call.answer()
             await state.set_state(YandexInternship.finalize)
             await setup_finalize(call, state)
+            return None
     if not manual_run:
         split = call.data.split(':')
         action = split[4]
@@ -302,7 +302,7 @@ async def flow_begin(call: types.CallbackQuery):
 
 
 # region Administration
-@dp.callback_query_handler(lambda c: c.data == 'admin:yandex_internship:enrolled_list')
+@dp.callback_query_handler(admin_only, lambda c: c.data == 'admin:yandex_internship:enrolled_list')
 async def admin_get_enrolled_list(call: types.CallbackQuery):
     """Send the list of all enrolled users (agreed or not)."""
     await call.answer()
@@ -314,7 +314,8 @@ async def admin_get_enrolled_list(call: types.CallbackQuery):
     csv_file = io.StringIO()
     csv_writer = csv.writer(csv_file)
     csv_writer.writerow(['Phone number', 'Agreed', 'Registered (Yandex end)', 'Registration confirmed by user',
-                         'Marathon Activated', 'User ID', 'Username', 'Email', 'First name', 'Last name', 'Skills'])
+                         'Marathon Activated', 'Registration timestamp', 'User ID', 'Username', 'Email',
+                         'First name', 'Last name', 'Skills'])
     for user in users:
         user_profile = db.get_user_data(user.uid)
         csv_writer.writerow([user_profile['phone'],
@@ -322,6 +323,7 @@ async def admin_get_enrolled_list(call: types.CallbackQuery):
                              '+' if user.is_registered else '',
                              '+' if user.is_registered_confirmed else '',
                              '+' if user.is_flow_activated else '',
+                             datetime.strftime(user.ts, '%Y-%m-%d %H:%M:%S'),
                              user.uid,
                              user_profile['uname'] if user_profile['uname'] else '',
                              user_profile['email'],
@@ -334,13 +336,30 @@ async def admin_get_enrolled_list(call: types.CallbackQuery):
     csv_file.close()
 
 
-@dp.callback_query_handler(lambda c: c.data == 'admin:yandex_internship:validate_enrollment')
+@dp.callback_query_handler(admin_only, lambda c: c.data == 'admin:yandex_internship:validate_enrollment')
 async def admin_validate_enrollment(call: types.CallbackQuery, state: FSMContext):
     """Validate the enrollment of a user."""
     await call.answer()
     await call.message.answer('Please send the phone numbers of the user you wish to validate, separated by spaces.')
     await call.message.delete()
     await state.set_state(YandexInternshipAdminEnrollment.validate)
+
+
+@dp.callback_query_handler(admin_only, lambda c: c.data == 'admin:yandex_internship:remove_user')
+async def admin_remove_user(call: types.CallbackQuery, state: FSMContext):
+    """Remove a user from the database."""
+    await call.answer()
+    await call.message.answer('Please send the phone number of the user you wish to remove.')
+    await call.message.delete()
+    await state.set_state(YandexInternshipAdminEnrollment.del_user)
+
+
+@dp.message_handler(state=YandexInternshipAdminEnrollment.del_user)
+async def admin_remove_user_stage_2(msg: types.message, state: FSMContext):
+    """Remove a user from the database."""
+    await state.finish()
+    db.del_ya_int_user(db.get_uid_by_phone(int(msg.text)))
+    await msg.answer('User removed from database.')
 
 
 @dp.message_handler(state=YandexInternshipAdminEnrollment.validate)
@@ -355,6 +374,38 @@ async def admin_validate_enrollment_handler(msg: types.Message, state: FSMContex
             exceptions.append(phone)
     if len(exceptions) > 0:
         await msg.answer('The following phone numbers are invalid: ' + ', '.join(exceptions))
+    await msg.answer('Done.')
+
+
+@dp.callback_query_handler(admin_only, lambda c: c.data == 'admin:yandex_internship:time_travel')
+async def admin_time_travel(call: types.CallbackQuery, state: FSMContext):
+    """Make an enrolled user time travel (to check the scheduler)."""
+    await call.answer()
+    await call.message.answer('Send the phone number of the user you wish to time travel.')
+    await call.message.delete()
+    await state.set_state(YandexInternshipAdminEnrollment.time_travel_phone)
+
+
+@dp.message_handler(state=YandexInternshipAdminEnrollment.time_travel_phone)
+async def admin_time_travel_handler_0(msg: types.Message, state: FSMContext):
+    """Handle the time travel of a user (get the number of days)."""
+    await state.update_data(phone=int(msg.text))
+    await msg.answer('For how many hours?')
+    await state.set_state(YandexInternshipAdminEnrollment.time_travel_hours)
+
+
+@dp.message_handler(state=YandexInternshipAdminEnrollment.time_travel_hours)
+async def admin_time_travel_handler_1(msg: types.Message, state: FSMContext):
+    """Handle the time travel of a user (get the number of hours)."""
+    data = await state.get_data()
+    await state.finish()
+    await msg.answer('Please note that in the backend, user\'s timestamps will be reduced by the amount \
+of hours you specified.')
+    try:
+        db.dec_ya_int_user_timestamps(data['phone'], timedelta(hours=int(msg.text)))
+    except AttributeError:
+        await msg.answer('Invalid phone number (user not found).')
+        return
     await msg.answer('Done.')
 # endregion
 

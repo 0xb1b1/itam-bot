@@ -24,7 +24,7 @@ services:
     image: 0xb1b1/itam-bot-test:latest
     restart: always
     env_file:
-      - .env.testing
+      - .env.demo
     volumes:
       - "logs:/data"
     depends_on:

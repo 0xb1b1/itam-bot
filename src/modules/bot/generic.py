@@ -7,6 +7,7 @@ from aiogram.types import KeyboardButton, InlineKeyboardMarkup, \
     ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from modules import btntext
+from modules import constants
 
 
 class BotGenericFunctions:
@@ -45,3 +46,17 @@ class BotGenericFunctions:
         if isinstance(message, types.Message):
             return ReplyKeyboardRemove() if self.chat_is_group(message) else main_menu
         return main_menu
+
+    async def send_long_message(self, chat_id, message_text):
+        # check if the message length is greater than the maximum allowed by Telegram
+        if len(message_text) > constants.MAX_MESSAGE_LENGTH:
+            # split the message into parts
+            message_parts = [message_text[i:i + constants.MAX_MESSAGE_LENGTH] for i in
+                             range(0, len(message_text), constants.MAX_MESSAGE_LENGTH)]
+
+            # send each part of the message
+            for part in message_parts:
+                await self.bot.send_message(chat_id, part)
+        else:
+            # send the message if it doesn't exceed the maximum length
+            await self.bot.send_message(chat_id, message_text)

@@ -3,11 +3,13 @@
 
 """Bot administration handlers."""
 # region Regular dependencies
+from typing import Union
 from aiogram import Bot, Dispatcher
 from aiogram import types
 from aiogram.types.message import ParseMode
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
+from aiogram.utils.exceptions import MessageNotModified
 from sqlalchemy.exc import DataError
 from logging import Logger
 # endregion
@@ -22,6 +24,7 @@ from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import AdminChangeUserGroup, AdminGetObjectId
 from modules.bot import decorators as dp  # Bot decorators
 from modules import markup as nav
+from modules import constants
 # endregion
 
 # region Passed by setup()
@@ -43,20 +46,34 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 
 @dp.message_handler(admin_only, lambda message: message.text == btntext.ADMIN_BTN)
 @dp.message_handler(admin_only, commands=['admin'])
-async def admin_panel(message: types.Message):
+@dp.callback_query_handler(admin_only, lambda c: c.data in ['admin:panel', 'admin:panel:override'])
+async def admin_panel(msg: Union[types.Message, types.CallbackQuery]):
     """Send admin panel."""
+    user_id = msg.from_user.id
+    if isinstance(msg, types.CallbackQuery):
+        await msg.answer()
+        override_msg = msg.data == 'admin:panel:override'
+        msg = msg.message
+    else:
+        override_msg = False
     inl_admin_change_group_btn = InlineKeyboardButton(btntext.INL_ADMIN_EDIT_GROUP,
                                                       callback_data='change_user_group')
     inl_admin_broadcast_btn = InlineKeyboardButton(btntext.INL_ADMIN_BROADCAST,
                                                    callback_data='admin:broadcast')
     inl_admin_yandex_internship_btn = InlineKeyboardButton(btntext.INL_ADMIN_YANDEX_INTERNSHIP,
                                                            callback_data='admin:yandex_internship')
+    inl_admin_stats_btn = InlineKeyboardButton(btntext.INL_ADMIN_STATS,
+                                               callback_data='admin:stats')
     markup = InlineKeyboardMarkup().add(inl_admin_change_group_btn,
                                         inl_admin_broadcast_btn,
-                                        inl_admin_yandex_internship_btn)
-    await message.answer(replies.admin_panel(),
-                         reply_markup=markup)
-    log.info(f"User {message.from_user.id} opened the admin panel")
+                                        inl_admin_yandex_internship_btn,
+                                        inl_admin_stats_btn)
+    if override_msg:
+        await msg.edit_text(replies.admin_panel(), reply_markup=markup)
+        log.info(f"User {user_id} re-opened the admin panel from another menu")
+    else:
+        await msg.answer(replies.admin_panel(), reply_markup=markup)
+        log.info(f"User {user_id} opened the admin panel")
 
 
 @dp.message_handler(admin_only, commands=['get_notif_db'])
@@ -68,9 +85,18 @@ async def get_notif_db(message: types.Message):
 @dp.callback_query_handler(lambda c: c.data == 'admin:stats')
 async def get_stats(call: types.CallbackQuery) -> None:
     """Get bot statistics for administration."""
-    markup = InlineKeyboardMarkup().add(types.InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG,
-                                                                   callback_data="coworking:trim_log"))
-    await call.message.answer(replies.stats(db.get_stats()), reply_markup=markup)
+    await call.answer()
+    trim_coworking_log_btn = InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG,
+                                                  callback_data="coworking:trim_log")
+    refresh_btn = InlineKeyboardButton(text=btntext.REFRESH,
+                                       callback_data="admin:stats")
+    back_btn = InlineKeyboardButton(text=btntext.BACK,
+                                    callback_data="admin:panel:override")
+    markup = InlineKeyboardMarkup().add(trim_coworking_log_btn, refresh_btn, back_btn)
+    try:
+        await call.message.edit_text(replies.stats(db.get_stats()), reply_markup=markup)
+    except MessageNotModified:
+        return
 
 
 @dp.callback_query_handler(lambda c: c.data == 'change_user_group')
@@ -149,21 +175,21 @@ async def check_admin(message: types.Message):
 
 
 @dp.message_handler(commands=['get_groups'])
-async def get_groups(message: types.Message):
+async def get_groups(msg: types.Message):
     """Get groups."""
-    await message.answer(str(db.get_groups()))
+    await msg.answer(db.get_groups())
 
 
 @dp.message_handler(commands=['get_users'])
-async def get_users(message: types.Message):
+async def get_users(msg: types.Message):
     """Get user info."""
-    await message.answer(str(db.get_users_str()))
+    await bot_generic.send_long_message(msg.from_user.id, db.get_users_str())
 
 
 @dp.message_handler(commands=['get_users_verbose'])
-async def get_users_verbose(message: types.Message):
+async def get_users_verbose(msg: types.Message):
     """Get verbose user info."""
-    await message.answer(str(db.get_users_verbose_str()))
+    await bot_generic.send_long_message(msg.from_user.id, db.get_users_verbose_str())
 
 
 @dp.message_handler(admin_only, commands=['get_id'])
@@ -205,8 +231,9 @@ async def reply_with_id(message: types.Message):
 async def yandex_control_panel(call: types.CallbackQuery):
     """Yandex Internship control panel."""
     await call.answer()
-    await call.message.answer(replies.yandex_internship_control_panel(),
-                              reply_markup=nav.get_yandex_internship_control_kb())
+    await call.message.edit_text(replies.yandex_internship_control_panel(),
+                                 reply_markup=nav.get_yandex_internship_control_kb())
+    log.info(f"User {call.from_user.id} opened the Yandex Internship control panel")
 
 # endregion
 

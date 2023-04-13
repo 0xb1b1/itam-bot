@@ -16,6 +16,9 @@ INL_ADMIN_EDIT_GROUP = "⚙️ Изменить группу пользоват�
 TRIM_COWORKING_LOG = "🧹 Обрезать лог статусов коворкинг пространства"
 COWORKING_TAKE_RESPONSIBILITY = "🚧 Взять ответственность"
 INL_ADMIN_BROADCAST = "📢 Рассылка"
+INL_ADMIN_STATS = "📊 Статистика"
+REFRESH = "🔄 Обновить"
+BACK = "🔙 Назад"
 INL_COWORKING_STATUS_EXPLAIN = "🤨 Что это?"
 
 # Inline user profile buttons
