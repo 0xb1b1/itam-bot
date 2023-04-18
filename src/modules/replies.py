@@ -85,7 +85,6 @@ def profile_info(info) -> str:
 
 {fields['first_name']}: {is_set(info['first_name'])}
 {fields['last_name']}: {is_set(info['last_name'])}
-{fields['gname']}: {info['gname']}
 {fields['birthday']}: {datetime.strftime(info['birthday'],
                                          "%d.%m.%Y") 
     if info['birthday'] is not None else is_set(None)}
@@ -290,15 +289,6 @@ def switch_coworking_status_inline_binary_action(status: CoworkingStatus) -> str
     return f"{action_inl} коворкинг (сейчас {status_inl})"
 
 
-def switch_coworking_from_nonbinary_action(status: CoworkingStatus, to_open: bool) -> str:
-    """Accepts only CoworkingStatus.temp_closed or CoworkingStatus.event_open"""
-    if status not in [CoworkingStatus.temp_closed, CoworkingStatus.event_open]:
-        raise ValueError("Invalid status")
-    status_icon, status_str = get_coworking_status_reply_data(status, responsible_account=False)
-    status_inl = status_str + " " + status_icon
-    return f"{'Открыть' if to_open else 'Закрыть'} коворкинг (сейчас {status_inl})"
-
-
 def coworking_status_changed(status: CoworkingStatus,
                              responsible_uname: str = "(не назначен)",
                              delta_mins: int = 0) -> str:
@@ -306,10 +296,6 @@ def coworking_status_changed(status: CoworkingStatus,
                                                               responsible_uname=responsible_uname,
                                                               delta_mins=delta_mins)
     return f"🔑{status_icon} Коворкинг ITAM {status_str}"
-
-
-def coworking_status_not_binary() -> str:
-    return "❌ Невозможно выполнить действие: коворкинг не в открытом или закрытом состоянии"
 
 
 def plaintext_answers_reply(status: bool, toggled: bool = False, chat_id: int = None, admin_uname: str = None) -> str:
@@ -506,6 +492,15 @@ def coworking_status_explain(responsible_uname: str) -> str:
 
 
 # region Yandex Internship
-def yandex_internship_control_panel() -> str:
-    return """🔑 Панель управления Яндекс Стажировкой"""
+def yandex_internship_control_panel(all_count: int, enrolled_count: int, registered_count: int,
+                                    registered_confirmed_count: int, flow_activated_count: int) -> str:
+    return f"""🔑 Панель управления Яндекс Стажировкой
+
+📊 Статистика
+Всего пользователей: {all_count}
+Согласились на стажу: {enrolled_count}
+Зарегистрированы на стороне Яндекса: {registered_count}
+Подтвердили регистрацию: {registered_confirmed_count}
+Начали неделю мотивации: {flow_activated_count}
+"""
 # endregion

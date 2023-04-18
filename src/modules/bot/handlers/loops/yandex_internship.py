@@ -127,7 +127,7 @@ async def yandex_internship_loop(db: DBManager, bot: Bot, log: Logger):
     """Yandex Internship main asyncio event loop."""
     while True:
         await asleep(10)  # TODO: Prod sleep is 120 ~
-        users = db.get_all_ya_int_users()
+        users = db.get_ya_int_all_users()
         log.debug(f"[Yandex Internship] Checking {len(users)} users:\n{', '.join([str(x.uid) for x in users])}")
         for user in users:
             timestamp = user.ts
@@ -157,10 +157,17 @@ async def yandex_internship_loop(db: DBManager, bot: Bot, log: Logger):
                 if (user.is_registered
                         and not user.is_registered_confirmed
                         and not user.registered_notified_stage >= 3):
-                    if 17 <= datetime.utcnow().hour <= 18:
+                    if 11 <= datetime.utcnow().hour <= 14:
                         # Check if the previous message was sent more than 20 hours ago
                         # If so, send a new message
-                        if (datetime.utcnow() - user.registered_notified_last_ts) >= timedelta(hours=20):
+                        #
+                        # If the user has not been notified yet, send a message regardless of the time passed
+                        if user.registered_notified_stage == 0:
+                            send_registration_confirm = True
+                        else:
+                            send_registration_confirm = (datetime.utcnow() -
+                                                         user.registered_notified_last_ts) >= timedelta(hours=20)
+                        if send_registration_confirm:
                             kb = InlKbMarkup()
                             match user.registered_notified_stage:
                                 case 0:
@@ -206,12 +213,48 @@ message to user {user.uid}")
                     # After sending them, set their respective flags to True
                     user_json = dict(user.flow_json)
                     log.debug(f"[Yandex Internship] user_json for user {user.uid}: {user_json}")
-                    # Run if user.flow_last_ts is at least 22 hours ago
                     log.debug("User flow last ts: " + str(user.flow_last_ts))
-                    first_day_sent = user_json['day_1']['msg_1'] and user_json['day_1']['msg_2'] \
-                        and user_json['day_1']['msg_3']
-                    if not first_day_sent or (datetime.utcnow() - user.flow_last_ts) >= timedelta(hours=22):
+                    # Get the current day for user by finding the first False flag in user_json
+                    # TODO: If all flags are True, set the current day to the last day
+                    current_day = None
+                    for day in user_json:
+                        for msg in user_json[day].items():
+                            if not msg[1]:
+                                current_day = day
+                                break
+                        if current_day is not None:
+                            break
+                    log.debug(f"[Yandex Internship] Current day for user {user.uid}: {current_day}")
+                    if current_day is None:
+                        log.debug(f"[Yandex Internship] All messages sent for user {user.uid}")
+                        continue
+                    # Check if current_day has at least one message sent
+                    if any(user_json[current_day].values()):
+                        # If so, set current_day_any_messages_sent to True
+                        log.debug(f"[Yandex Internship] Sending first timed flow message (day: `{current_day}` | \
+msg: `{list(user_json[current_day].keys())[0]}` to user {user.uid}")
+                        current_day_any_messages_sent = True
+                    else:
+                        current_day_any_messages_sent = False
+
+                    # If current_day_any_messages_sent is False, check if at least 22 hours have
+                    # passed since the last message
+                    if not current_day_any_messages_sent:
+                        send_flow_messages = (datetime.utcnow() - user.flow_last_ts) >= timedelta(hours=5)
+                        log.debug(f"[Yandex Internship] send_flow_messages: Checking if 5 hours have passed since \
+last message for user {user.uid}: {send_flow_messages}")
+                    else:
+                        send_flow_messages = True
+                        log.debug(f"[Yandex Internship] send_flow_messages: Setting to True for user {user.uid} \
+because some messages for current_day have been sent")
+
+                    # Check if the user has been sent all messages for current_day
+                    if send_flow_messages:
                         for day in user_json:
+                            if day != current_day:
+                                log.debug(f"[Yandex Internship] Skipping timed flow message (day: `{day}` to user \
+{user.uid}: not current day")
+                                continue
                             message_found = False
                             log.debug(f"[Yandex Internship] Checking timed flow message (day: \
 `{day} to user {user.uid}")
@@ -224,8 +267,8 @@ msg: `{msg[0]}` to user {user.uid}: message already sent")
                                 # If so, send the message and set the flag to True
                                 hr_start = flow_timeline[day][msg[0]]['hour_start']
                                 log.debug(f"[Yandex Internship] Checking day {day} | msg {msg[0]} for user {user.uid} \
-| {hr_start=} | {datetime.utcnow().hour=}, condition is {hr_start + 4 > datetime.utcnow().hour >= hr_start}")
-                                if hr_start + 4 > datetime.utcnow().hour >= hr_start:
+| {hr_start=} | {datetime.utcnow().hour=}, condition is {hr_start + 7 > datetime.utcnow().hour >= hr_start}")
+                                if hr_start + 2 > datetime.utcnow().hour >= hr_start:  # Check if this is  redundant
                                     log.debug(f"[Yandex Internship] Sending timed flow message (day: `{day}` | \
     msg: `{msg[0]}` to user {user.uid}")
                                     try:

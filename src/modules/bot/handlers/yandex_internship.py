@@ -21,6 +21,7 @@ import csv
 
 # region Local dependencies
 from modules import markup as nav
+from modules import btntext as btns
 from modules import replies
 from modules.db import DBManager
 from modules.models import Skill
@@ -61,29 +62,62 @@ inlStartMenu = InlineKeyboardMarkup(row_width=2).add(inlStartDisagree,
 
 
 @dp.callback_query_handler(lambda c: c.data == 'skill:yandex_internship')
-async def yandex_internship_start(message: Union[types.Message,
-                                                 types.CallbackQuery]):
+async def yandex_internship_start(msg: Union[types.Message,
+                                             types.CallbackQuery]):
     """Handle /yandex_internship command or button press."""
-    if isinstance(message, types.CallbackQuery):
-        await message.answer()
-        message = message.message
+    if isinstance(msg, types.CallbackQuery):
+        await msg.answer()
+        from_user = msg.from_user.id
+        msg = msg.message
+    else:
+        from_user = msg.from_user.id
+    if db.is_ya_int_user(from_user):
+        await profile_menu(msg)
+        return
     # Remove previous message
-    await message.delete()
+    await msg.delete()
     welcome = ya_replies.welcome()
-    await message.answer(ya_replies.start(), reply_markup=ReplyKeyboardRemove())
-    await bot.send_chat_action(message.chat.id, ChatActions.CHOOSE_STICKER)
+    await msg.answer(ya_replies.start(), reply_markup=ReplyKeyboardRemove())
+    await bot.send_chat_action(msg.chat.id, ChatActions.CHOOSE_STICKER)
     await asleep(0.4)
-    await bot.send_sticker(message.chat.id, stickers.YANDEX_INTERNSHIP_START)
-    await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
+    await bot.send_sticker(msg.chat.id, stickers.YANDEX_INTERNSHIP_START)
+    await bot.send_chat_action(msg.chat.id, ChatActions.TYPING)
     await asleep(0.7)
-    await message.answer(welcome[0], parse_mode=ParseMode.MARKDOWN)
-    await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
+    await msg.answer(welcome[0], parse_mode=ParseMode.MARKDOWN)
+    await bot.send_chat_action(msg.chat.id, ChatActions.TYPING)
     await asleep(1)
-    await message.answer(welcome[1], parse_mode=ParseMode.MARKDOWN)
-    await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
+    await msg.answer(welcome[1], parse_mode=ParseMode.MARKDOWN)
+    await bot.send_chat_action(msg.chat.id, ChatActions.TYPING)
     await asleep(1)
-    await message.answer(welcome[2], parse_mode=ParseMode.MARKDOWN,
-                         reply_markup=inlStartMenu)
+    await msg.answer(welcome[2], parse_mode=ParseMode.MARKDOWN,
+                     reply_markup=inlStartMenu)
+
+
+async def profile_menu(msg: types.Message):
+    """Send profile menu to user."""
+    await msg.edit_text(ya_replies.profile_menu(),
+                        reply_markup=ya_kbs.profile_menu())
+
+
+@dp.callback_query_handler(lambda c: c.data == 'skill:yandex_internship:enrollment:remove_user')
+async def remove_user(call: types.CallbackQuery):
+    """Remove user from Yandex Internship."""
+    await call.answer()
+    await call.message.edit_text(ya_replies.remove_user_ask_confirm(),
+                                 reply_markup=ya_kbs.remove_user_confirm())
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('skill:yandex_internship:remove_user:'))
+async def remove_user_confirmed(call: types.CallbackQuery):
+    action = call.data.split(':')[3]
+    if action == 'confirm':
+        db.del_ya_int_user(call.from_user.id)
+        await call.message.answer(ya_replies.remove_user_success(),
+                                  reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
+    else:
+        await call.message.answer(ya_replies.remove_user_cancelled(),
+                                  reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
+    await call.message.delete()
 
 
 @dp.callback_query_handler(lambda c: c.data == 'skill:yandex_internship:welcome:disagree')
@@ -302,11 +336,39 @@ async def flow_begin(call: types.CallbackQuery):
 
 
 # region Administration
+@dp.callback_query_handler(lambda c: c.data == 'admin:yandex_internship')
+async def yandex_control_panel(call: Union[types.CallbackQuery, types.Message],
+                               send_message: bool = False):
+    """Yandex Internship control panel."""
+    if isinstance(call, types.CallbackQuery):
+        await call.answer()
+        from_user = call.from_user.id
+        call = call.message
+    else:
+        from_user = call.from_user.id
+    # Get analytics from database
+    if send_message:
+        await call.answer(replies.yandex_internship_control_panel(db.get_ya_int_all_users_count(),
+                                                                  db.get_ya_int_all_enrolled_users_count(),
+                                                                  db.get_ya_int_all_is_registered_users_count(),
+                                                                  db.get_ya_int_all_is_registered_confirmed_users_count(),  # noqa
+                                                                  db.get_ya_int_all_is_flow_activated_users_count()),
+                          reply_markup=nav.get_yandex_internship_control_kb())
+    else:
+        await call.edit_text(replies.yandex_internship_control_panel(db.get_ya_int_all_users_count(),
+                                                                  db.get_ya_int_all_enrolled_users_count(),
+                                                                  db.get_ya_int_all_is_registered_users_count(),
+                                                                  db.get_ya_int_all_is_registered_confirmed_users_count(),  # noqa
+                                                                  db.get_ya_int_all_is_flow_activated_users_count()),
+                             reply_markup=nav.get_yandex_internship_control_kb())
+    log.info(f"User {from_user} opened the Yandex Internship control panel")
+
+
 @dp.callback_query_handler(admin_only, lambda c: c.data == 'admin:yandex_internship:enrolled_list')
 async def admin_get_enrolled_list(call: types.CallbackQuery):
     """Send the list of all enrolled users (agreed or not)."""
     await call.answer()
-    users = db.get_all_ya_int_users()
+    users = db.get_ya_int_all_users()
     if not users or len(users) == 0:
         await call.message.answer('No users enrolled.')
         return
@@ -345,6 +407,22 @@ async def admin_validate_enrollment(call: types.CallbackQuery, state: FSMContext
     await state.set_state(YandexInternshipAdminEnrollment.validate)
 
 
+@dp.message_handler(state=YandexInternshipAdminEnrollment.validate)
+async def admin_validate_enrollment_handler(msg: types.Message, state: FSMContext):
+    """Handle the validation of a user."""
+    await state.finish()
+    exceptions = []
+    for phone in msg.text.strip().split(' '):
+        try:
+            db.set_ya_int_is_registered_by_phone(int(phone), True)
+        except ValueError:
+            exceptions.append(phone)
+    if len(exceptions) > 0:
+        await msg.answer('The following phone numbers are invalid: ' + ', '.join(exceptions))
+    await msg.answer('Done.')
+    await yandex_control_panel(msg, send_message=True)
+
+
 @dp.callback_query_handler(admin_only, lambda c: c.data == 'admin:yandex_internship:remove_user')
 async def admin_remove_user(call: types.CallbackQuery, state: FSMContext):
     """Remove a user from the database."""
@@ -360,21 +438,6 @@ async def admin_remove_user_stage_2(msg: types.message, state: FSMContext):
     await state.finish()
     db.del_ya_int_user(db.get_uid_by_phone(int(msg.text)))
     await msg.answer('User removed from database.')
-
-
-@dp.message_handler(state=YandexInternshipAdminEnrollment.validate)
-async def admin_validate_enrollment_handler(msg: types.Message, state: FSMContext):
-    """Handle the validation of a user."""
-    await state.finish()
-    exceptions = []
-    for phone in msg.text.split(' '):
-        try:
-            db.set_ya_int_is_registered_by_phone(int(phone), True)
-        except ValueError:
-            exceptions.append(phone)
-    if len(exceptions) > 0:
-        await msg.answer('The following phone numbers are invalid: ' + ', '.join(exceptions))
-    await msg.answer('Done.')
 
 
 @dp.callback_query_handler(admin_only, lambda c: c.data == 'admin:yandex_internship:time_travel')

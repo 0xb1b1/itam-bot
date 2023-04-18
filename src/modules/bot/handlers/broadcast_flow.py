@@ -84,7 +84,8 @@ async def admin_broadcast_stage1(message: types.Message,
     """Broadcast message to all users (admin, stage 1)."""
     await state.update_data(msg_type=media_types[message.text])
     if message.text == TYPE_TEXT:
-        await message.answer(f"Введи текст для рассылки\n\n{replies.cancel_action()}")
+        await message.answer(f"Введи текст для рассылки\n\n{replies.cancel_action()}",
+                             reply_markup=ReplyKeyboardRemove())
         await state.set_state(AdminBroadcast.message)  # type: ignore
     else:
         await message.answer(f"Отправь медиа-файл для рассылки\n\n{replies.cancel_action()}",
@@ -161,6 +162,10 @@ async def admin_broadcast_stage5(message: types.Message,
         scope = 'users'
     elif state_data['scope'] == btntext.ADMINS:
         scope = 'admins'
+    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_ENROLLED:
+        scope = 'ya_int-enrolled'
+    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_NOT_ENROLLED:
+        scope = 'ya_int-not_enrolled'
     else:
         await bot.send_message(message.from_user.id, "Неверный тип рассылки")
         await state.finish()

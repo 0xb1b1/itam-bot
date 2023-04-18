@@ -9,7 +9,7 @@ from aiogram import types
 from aiogram.types.message import ParseMode
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
-from aiogram.utils.exceptions import MessageNotModified
+from aiogram.utils.exceptions import MessageNotModified, BotKicked
 from sqlalchemy.exc import DataError
 from logging import Logger
 # endregion
@@ -174,10 +174,23 @@ async def check_admin(message: types.Message):
         await message.answer(replies.permission_denied())
 
 
-@dp.message_handler(commands=['get_groups'])
+@dp.message_handler(admin_only, commands=['get_groups'])
 async def get_groups(msg: types.Message):
     """Get groups."""
-    await msg.answer(db.get_groups())
+    await msg.answer("\n".join([f"{i + 1}. {g.name}" for i, g in enumerate(db.get_groups())]))
+
+
+@dp.message_handler(admin_only, commands=['fix_group_keyboards'])
+async def fix_group_keyboards(msg: types.Message):
+    """Fix (remove) keyboards for all groups."""
+    for group_id in db.get_group_chats():
+        try:
+            await bot.send_message(group_id, "Чиню клавиатуру...\nЭтот запрос отправил администратор ITAM Bot",
+                                   reply_markup=types.ReplyKeyboardRemove())
+        except Exception as exc:
+            log.debug(f"Failed to send fix_group_keyboards message to {group_id}: {exc}")
+            continue
+    await msg.answer("Done")
 
 
 @dp.message_handler(commands=['get_users'])
@@ -223,18 +236,6 @@ async def reply_with_id(message: types.Message):
     else:
         msg = "(I can't get ID from this message)"
     await message.reply(msg + "\n\n" + replies.cancel_action())
-# endregion
-
-
-# region Yandex Internship
-@dp.callback_query_handler(lambda c: c.data == 'admin:yandex_internship')
-async def yandex_control_panel(call: types.CallbackQuery):
-    """Yandex Internship control panel."""
-    await call.answer()
-    await call.message.edit_text(replies.yandex_internship_control_panel(),
-                                 reply_markup=nav.get_yandex_internship_control_kb())
-    log.info(f"User {call.from_user.id} opened the Yandex Internship control panel")
-
 # endregion
 
 

@@ -46,6 +46,10 @@ class BotBroadcastFunctions:
             chat_ids = self.db.get_admin_chats()
         elif scope == 'users':
             chat_ids = self.db.get_user_chats()
+        elif scope == 'ya_int-enrolled':
+            chat_ids = self.db.get_ya_int_enrolled_chats()
+        elif scope == 'ya_int-not_enrolled':
+            chat_ids = self.db.get_ya_int_not_enrolled_chats()
         else:
             raise ValueError("Invalid scope")
         self.log.debug(f"Broadcasting message to \
@@ -61,7 +65,7 @@ class BotBroadcastFunctions:
                           ContentType.VIDEO_NOTE]:
             await self._send_media_broadcast(content,
                                              media,
-                                             media_type,
+                                             media_type,  # type: ignore
                                              chat_ids,
                                              is_markdown=is_markdown)
             return

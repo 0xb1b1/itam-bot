@@ -37,10 +37,10 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 @dp.message_handler(lambda message: message.text == btntext.BOT_SKILLS_BTN)
 async def bot_skills_menu(message: types.Message):
     if not db.user_exists(message.from_user.id):
-        await db.add_regular_user(message.from_user.id,
-                                  message.from_user.username,
-                                  message.from_user.first_name,
-                                  message.from_user.last_name)
+        db.add_regular_user(message.from_user.id,
+                            message.from_user.username,
+                            message.from_user.first_name,
+                            message.from_user.last_name)
     await message.answer(sk_replies.bot_skills_menu(), reply_markup=nav.botSkillsMenu)
 
 

@@ -7,7 +7,25 @@ from aiogram.types import InlineKeyboardMarkup as InlKbMkup
 from aiogram.types import InlineKeyboardButton as InlKbBtn
 
 from modules.models import Skill
+from modules import btntext as btns
 from modules.replies import skill_names as profile_skill_names
+
+
+def profile_menu() -> InlKbMkup:
+    """Get inline keyboard for profile menu."""
+    kb = InlKbMkup(row_width=1)
+    kb.add(InlKbBtn('Изменить соглашение', callback_data='skill:yandex_internship:agreed:edit'))
+    kb.add(InlKbBtn('Удалить профиль', callback_data='skill:yandex_internship:enrollment:remove_user'))
+    kb.add(InlKbBtn('Справка', callback_data='skill:yandex_internship:enrollment:edit'))
+    return kb
+
+
+def remove_user_confirm() -> InlKbMkup:
+    """Get inline keyboard for removing user confirmation."""
+    kb = InlKbMkup(resize_keyboard=True)
+    kb.add(InlKbBtn(btns.DELETE_CONFIRM, callback_data='skill:yandex_internship:remove_user:confirm'),
+           InlKbBtn(btns.DELETE_CANCEL, callback_data='skill:yandex_internship:remove_user:cancel'))
+    return kb
 
 
 def get_skill_inl_kb(active_skills: List[Skill]) -> InlKbMkup:

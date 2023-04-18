@@ -33,13 +33,17 @@ inlResumeMenu = InlKbMarkup().add(inlEditResumeBtn)
 inlCancelBtn = InlKbBtn('Отмена', callback_data='cancel')
 inlCancelMenu = InlKbMarkup().add(inlCancelBtn)
 
-bcScopeUsers = KeyboardButton(btns.USERS)
-bcScopeAdmins = KeyboardButton(btns.ADMINS)
-bcScopeEveryone = KeyboardButton(btns.EVERYONE)
+bc_scope_users = KeyboardButton(btns.USERS)
+bc_scope_admins = KeyboardButton(btns.ADMINS)
+bc_scope_everyone = KeyboardButton(btns.EVERYONE)
+bc_scope_yandex_internship_enrolled = KeyboardButton(btns.YANDEX_INTERNSHIP_ENROLLED)
+bc_scope_yandex_internship_not_enrolled = KeyboardButton(btns.YANDEX_INTERNSHIP_NOT_ENROLLED)
 adminBroadcastScopeMenu = (ReplyKeyboardMarkup(resize_keyboard=True)
-                           .add(bcScopeUsers,
-                                bcScopeAdmins,
-                                bcScopeEveryone))
+                           .add(bc_scope_users,
+                                bc_scope_admins,
+                                bc_scope_everyone,
+                                bc_scope_yandex_internship_enrolled,
+                                bc_scope_yandex_internship_not_enrolled))
 
 confirmBtn = KeyboardButton(btns.CONFIRM)
 cancelBtn = KeyboardButton(btns.CANCEL)

@@ -11,13 +11,9 @@ from psycopg2 import OperationalError as psycopg2OpError
 # endregion
 
 # region Local imports
-from modules.models import CoworkingStatus, \
-                           CoworkingTrustedUser, \
-                           GroupType, Skill
-from modules.models import Base, User, UserData, UserSkills, \
-                           Group, ChatSettings, \
-                           Coworking, AdminCoworkingNotification, \
-                           YandexInternshipUser
+from modules.models import CoworkingStatus, CoworkingTrustedUser, GroupType, Skill
+from modules.models import Base, User, UserData, UserSkills, Group, ChatSettings, \
+                           Coworking, AdminCoworkingNotification, YandexInternshipUser
 # endregion
 
 
@@ -58,10 +54,10 @@ class DBManager:
         """Closes the database connection"""
         self.session.close_all()
 
-    def _recreate_tables(self) -> None:
-        """Recreate tables in DB"""
-        Base.metadata.drop_all(self.engine)
-        Base.metadata.create_all(self.engine)
+    # def _recreate_tables(self) -> None:  # Important: Do not use in production!
+    #     """Removes and recreates all tables in DB"""
+    #     Base.metadata.drop_all(self.engine)
+    #     Base.metadata.create_all(self.engine)
 
     def _update_db(self) -> None:
         """Create the database structure if it doesn't exist (update)"""
@@ -178,14 +174,20 @@ class DBManager:
         self.session.add(group)
         self.session.commit()
 
-    def get_groups(self, gtype: GroupType = None) -> str:  # TODO: Change to List
+    def get_groups(self, gtype: GroupType = None) -> List[Group]:  # TODO: FIX!
         """Get a string list of group names of a given type"""
         if gtype is not None:
             groups = self.session.query(Group).filter(Group.gtype == gtype).all()
-            return "\n".join([f"{i+1}. {g.name}" for i, g in enumerate(groups)])
         else:
             groups = self.session.query(Group).all()
-            return "\n".join([f"{i+1}. {g.name}" for i, g in enumerate(groups)])
+        return groups
+    # endregion
+
+    # region Chat management
+    def get_group_chats(self) -> List[int]:
+        """Get a list of Telegram group chats from ChatSettings table"""
+        chats = self.session.query(ChatSettings).filter(ChatSettings.cid < 0).all()
+        return [c.cid for c in chats]
     # endregion
 
     # region Admin statistics
@@ -338,41 +340,6 @@ class DBManager:
         self.session.commit()
         return phone
 
-    def set_user_data_phone(self, uid: int, phone: str) -> str:
-        """Set the phone number of a user"""
-        user = (self.session.query(UserData)
-                .filter(UserData.uid == uid)
-                .first())
-        if user is None:
-            raise AttributeError("User not found")
-        user.phone = phone
-        self.session.commit()
-        return phone
-
-    def set_user_data_email(self, uid: int, email: str) -> str:
-        """Set the email of a user"""
-        user = (self.session.query(UserData)
-                .filter(UserData.uid == uid)
-                .first())
-        if user is None:
-            raise AttributeError("User not found")
-        user.email = email
-        self.session.commit()
-        return email
-
-    def set_user_data_birthday(self,
-                               uid: int,
-                               birthday: date) -> Tuple[date, str]:
-        """Set the birthday of a user"""
-        user = (self.session.query(UserData)
-                .filter(UserData.uid == uid)
-                .first())
-        if user is None:
-            raise AttributeError("User not found")
-        user.birthday = birthday
-        self.session.commit()
-        return birthday, birthday.strftime("%d.%m.%Y")
-
     def skill_exists(self, uid: int, skill: Skill) -> bool:
         """Check if a skill exists for a user"""
         return (self.session.query(UserSkills)
@@ -483,8 +450,9 @@ class DBManager:
             for i in range(len(log) - limit):
                 self.session.delete(log[i])
             self.session.commit()
+    # endregion
 
-    # Trusted users
+    # region Trusted users
     def is_coworking_user_trusted(self, uid: int) -> bool:
         """Check if a user is trusted."""
         admin: bool = self.is_admin(uid)
@@ -539,14 +507,6 @@ class DBManager:
             return
         self.session.query(ChatSettings).filter(ChatSettings.cid == cid).update({"notifications_enabled": notify})
         self.session.commit()
-
-    def set_coworking_notifications(self, cid: int) -> None:
-        """Turn on coworking notifications for a chat id (cid)."""
-        self.change_coworking_notifications(cid, True)
-
-    def unset_coworking_notifications(self, cid: int) -> None:
-        """Turn off coworking notifications for a chat id (cid)."""
-        self.change_coworking_notifications(cid, False)
 
     def toggle_coworking_notifications(self, cid: int) -> bool:
         """Toggle coworking notifications for a chat id (cid)."""
@@ -692,17 +652,25 @@ has been opened today: {exc}")
     # endregion
 
     # region Privilege management
-    def get_user_chats(self) -> list:
+    def get_user_chats(self) -> List[int]:
         """Get a list of all uids with GroupType user."""
         return [i.uid for i in self.session.query(User).filter(User.gid == GroupType.users).all()]
 
-    def get_admin_chats(self) -> list:
+    def get_admin_chats(self) -> List[int]:
         """Get a list of all uids with GroupType admin."""
         return [i.uid for i in self.session.query(User).filter(User.gid == GroupType.admins).all()]
 
-    def get_all_chats(self) -> list:
+    def get_all_chats(self) -> List[int]:
         """Get a list of all uids"""
         return [i.uid for i in self.session.query(User).all()]
+
+    def get_ya_int_enrolled_chats(self) -> List[int]:
+        """Get a list of all uids who have agreed to participate in the Yandex Internship program."""
+        return [i.uid for i in self.session.query(YandexInternshipUser).filter(YandexInternshipUser.agreed).all()]
+
+    def get_ya_int_not_enrolled_chats(self) -> List[int]:
+        """Get a list of all uids who have not agreed to participate in the Yandex Internship program."""
+        return [i.uid for i in self.session.query(YandexInternshipUser).filter(not YandexInternshipUser.agreed).all()]
 
     @staticmethod
     def get_superadmin_uids() -> list[int]:
@@ -715,14 +683,37 @@ has been opened today: {exc}")
     # endregion
 
     # region Yandex Internship
-    def get_all_ya_int_users(self) -> list[YandexInternshipUser]:
+    def is_ya_int_user(self, uid: int) -> bool:
+        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).count() > 0
+
+    def get_ya_int_all_users(self) -> list[YandexInternshipUser]:
         """Get a list of all users of the Yandex Internship (`agree` is either True or False)."""
         return self.session.query(YandexInternshipUser).all()
+
+    def get_ya_int_all_users_count(self) -> int:
+        """Get the number of all users of the Yandex Internship (`agree` is either True or False)."""
+        return self.session.query(YandexInternshipUser).count()
+
+    def get_ya_int_all_enrolled_users_count(self) -> int:
+        """Get the number of users who have agreed to participate in the Yandex Internship program."""
+        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.agreed).count()
+
+    def get_ya_int_all_is_registered_users_count(self) -> int:
+        """Get the number of users who have registered for the Yandex Internship program."""
+        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.is_registered).count()
+
+    def get_ya_int_all_is_registered_confirmed_users_count(self) -> int:
+        """Get the number of users who have confirmed their registration for the Yandex Internship program."""
+        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.is_registered_confirmed).count()
+
+    def get_ya_int_all_is_flow_activated_users_count(self) -> int:
+        """Get the number of users who have activated the Yandex Internship program flow."""
+        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.is_flow_activated).count()
 
     def set_ya_int_user(self, uid: int, agreed: bool):
         """Set the user's agreement to participate in the Yandex Internship."""
         if self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first() is not None:
-            self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).delete()
+            self.del_ya_int_user(uid)
         self.session.add(YandexInternshipUser(uid=uid, agreed=agreed))
         self.session.commit()
 
