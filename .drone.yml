@@ -10,8 +10,8 @@ steps:
     image: plugins/docker
     pull: never
     settings:
-      dockerfile: Dockerfile
-      context: ./src
+      dockerfile: src/Dockerfile
+      context: src
       repo: 0xb1b1/itam-bot
       tags: latest
       username:
