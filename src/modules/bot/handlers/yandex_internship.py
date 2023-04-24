@@ -74,8 +74,8 @@ async def yandex_internship_start(msg: Union[types.Message,
     if db.is_ya_int_user(from_user):
         await profile_menu(msg)
         return
-    # Remove previous message
-    await msg.delete()
+    # # Remove previous message
+    # await msg.delete()
     welcome = ya_replies.welcome()
     await msg.answer(ya_replies.start(), reply_markup=ReplyKeyboardRemove())
     await bot.send_chat_action(msg.chat.id, ChatActions.CHOOSE_STICKER)
@@ -380,7 +380,7 @@ async def admin_get_enrolled_list(call: types.CallbackQuery):
                          'First name', 'Last name', 'Skills'])
     for user in users:
         user_profile = db.get_user_data(user.uid)
-        csv_writer.writerow([user_profile['phone'],
+        csv_writer.writerow([f'+{user_profile["phone"]}',
                              '+' if user.agreed else '',
                              '+' if user.is_registered else '',
                              '+' if user.is_registered_confirmed else '',
@@ -402,7 +402,7 @@ async def admin_get_enrolled_list(call: types.CallbackQuery):
 async def admin_validate_enrollment(call: types.CallbackQuery, state: FSMContext):
     """Validate the enrollment of a user."""
     await call.answer()
-    await call.message.answer('Please send the phone numbers of the user you wish to validate, separated by spaces.')
+    await call.message.answer('Please send the phone numbers of the user you wish to validate, separated by newlines.')
     await call.message.delete()
     await state.set_state(YandexInternshipAdminEnrollment.validate)
 
@@ -412,7 +412,10 @@ async def admin_validate_enrollment_handler(msg: types.Message, state: FSMContex
     """Handle the validation of a user."""
     await state.finish()
     exceptions = []
-    for phone in msg.text.strip().split(' '):
+    for phone in msg.text.strip().split('\n'):
+        phone = phone.strip()
+        if phone in ['', '\n']:
+            continue
         try:
             db.set_ya_int_is_registered_by_phone(int(phone), True)
         except ValueError:

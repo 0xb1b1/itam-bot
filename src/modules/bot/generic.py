@@ -29,6 +29,16 @@ class BotGenericFunctions:
             return True
         return False
 
+    @staticmethod
+    def chat_is_private(message: types.Message) -> bool:
+        """Check if message is sent from group or private chat"""
+        # Check if the type of cmessage is CallbackQuery
+        if isinstance(message, types.CallbackQuery):
+            message = message.message
+        if message.chat.type == 'private':
+            return True
+        return False
+
     def get_main_keyboard(self, message: Union[types.Message, int]) -> InlineKeyboardMarkup:
         user_id = message.from_user.id if isinstance(message, types.Message) else message
         btn_clubs = KeyboardButton(btntext.CLUBS_BTN)

@@ -36,14 +36,22 @@ inlCancelMenu = InlKbMarkup().add(inlCancelBtn)
 bc_scope_users = KeyboardButton(btns.USERS)
 bc_scope_admins = KeyboardButton(btns.ADMINS)
 bc_scope_everyone = KeyboardButton(btns.EVERYONE)
-bc_scope_yandex_internship_enrolled = KeyboardButton(btns.YANDEX_INTERNSHIP_ENROLLED)
+bc_scope_yandex_internship_not_signed_up = KeyboardButton(btns.YANDEX_INTERNSHIP_NOT_SIGNED_UP)
+bc_scope_yandex_internship_signed_up = KeyboardButton(btns.YANDEX_INTERNSHIP_SIGNED_UP)
 bc_scope_yandex_internship_not_enrolled = KeyboardButton(btns.YANDEX_INTERNSHIP_NOT_ENROLLED)
-adminBroadcastScopeMenu = (ReplyKeyboardMarkup(resize_keyboard=True)
+bc_scope_yandex_internship_enrolled = KeyboardButton(btns.YANDEX_INTERNSHIP_ENROLLED)
+bc_scope_yandex_internship_not_flow_started = KeyboardButton(btns.YANDEX_INTERNSHIP_NOT_FLOW_STARTED)
+bc_scope_yandex_internship_flow_started = KeyboardButton(btns.YANDEX_INTERNSHIP_FLOW_STARTED)
+adminBroadcastScopeMenu = (ReplyKeyboardMarkup(row_width=1)
                            .add(bc_scope_users,
                                 bc_scope_admins,
                                 bc_scope_everyone,
+                                bc_scope_yandex_internship_not_signed_up,
+                                bc_scope_yandex_internship_signed_up,
+                                bc_scope_yandex_internship_not_enrolled,
                                 bc_scope_yandex_internship_enrolled,
-                                bc_scope_yandex_internship_not_enrolled))
+                                bc_scope_yandex_internship_not_flow_started,
+                                bc_scope_yandex_internship_flow_started))
 
 confirmBtn = KeyboardButton(btns.CONFIRM)
 cancelBtn = KeyboardButton(btns.CANCEL)

@@ -12,7 +12,7 @@ from psycopg2 import OperationalError as psycopg2OpError
 
 # region Local imports
 from modules.models import CoworkingStatus, CoworkingTrustedUser, GroupType, Skill
-from modules.models import Base, User, UserData, UserSkills, Group, ChatSettings, \
+from modules.models import Base, User, UserData, UserSkill, Group, ChatSettings, \
                            Coworking, AdminCoworkingNotification, YandexInternshipUser
 # endregion
 
@@ -206,6 +206,21 @@ class DBManager:
         return "\n".join([f"{i+1}. [{u.first_name} {u.last_name if u.last_name else ''}] \
 @{u.uname if u.uname else '—'} [{u.uid}] ({self.get_group_name(u.gid)})" for i, u in enumerate(users)])
 
+    def get_users(self) -> List[User]:
+        """Get a list of users."""
+        return self.session.query(User).all()
+
+    def get_users_data(self) -> List[UserData]:
+        """Get a list of users data."""
+        return self.session.query(UserData).all()
+
+    def get_users_full(self) -> List[Tuple[User, UserData, List[UserSkill]]]:
+        """Get a list of users and their data (including UserSkill list)"""
+        users = self.session.query(User).all()
+        users_data = self.session.query(UserData).all()
+        users_skills = self.session.query(UserSkill).all()
+        return [(u, ud, [us for us in users_skills if us.uid == u.uid]) for u in users for ud in users_data if u.uid == ud.uid]
+
     def get_admins(self) -> List[User]:
         """Get a list of admins"""
         return self.session.query(User).filter(User.gid == GroupType.admins).all()
@@ -244,7 +259,7 @@ class DBManager:
         """Get information about a user"""
         main = self.session.query(User).filter(User.uid == uid).first()
         aux = self.session.query(UserData).filter(UserData.uid == uid).first()
-        skills = self.session.query(UserSkills).filter(UserSkills.uid == uid).all()
+        skills = self.session.query(UserSkill).filter(UserSkill.uid == uid).all()
         if main is None:
             return None
         return {
@@ -342,9 +357,9 @@ class DBManager:
 
     def skill_exists(self, uid: int, skill: Skill) -> bool:
         """Check if a skill exists for a user"""
-        return (self.session.query(UserSkills)
-                .filter(UserSkills.uid == uid,
-                        UserSkills.skill == skill)
+        return (self.session.query(UserSkill)
+                .filter(UserSkill.uid == uid,
+                        UserSkill.skill == skill)
                 .first()) is not None
 
     def add_user_skills(self,
@@ -355,7 +370,7 @@ class DBManager:
             skills = [skills]
         for s in skills:
             if not self.skill_exists(uid, s):
-                self.session.add(UserSkills(uid=uid, skill=s))
+                self.session.add(UserSkill(uid=uid, skill=s))
         self.session.commit()
 
     def set_user_skills(self,
@@ -367,15 +382,15 @@ class DBManager:
 
     def remove_user_skill(self, uid: int, skill: Skill) -> None:
         """Delete a skill from a user"""
-        (self.session.query(UserSkills)
-         .filter(UserSkills.uid == uid,
-                 UserSkills.skill == skill)
+        (self.session.query(UserSkill)
+         .filter(UserSkill.uid == uid,
+                 UserSkill.skill == skill)
          .delete())
         self.session.commit()
 
     def del_user_skills_all(self, uid: int) -> None:
         """Delete all skills from a user"""
-        self.session.query(UserSkills).filter(UserSkills.uid == uid).delete()
+        self.session.query(UserSkill).filter(UserSkill.uid == uid).delete()
         self.session.commit()
     # endregion
 
@@ -664,6 +679,22 @@ has been opened today: {exc}")
         """Get a list of all uids"""
         return [i.uid for i in self.session.query(User).all()]
 
+    def get_ya_int_registered_chats(self) -> List[int]:
+        """Get a list of all uids who have registered for the Yandex Internship program."""
+        return [i.uid for i in self.session.query(YandexInternshipUser).all()]
+
+    def get_ya_int_not_registered_chats(self) -> List[int]:
+        """Get a list of all uids who have not registered for the Yandex Internship program."""
+        # Get all users and select only those who are not in the YandexInternshipUser table
+        all_chats = self.get_all_chats()
+        ya_int_chats = self.get_ya_int_registered_chats()
+        self.log.debug(f"[Database] get_ya_int_not_registered_chats: {all_chats=}, {ya_int_chats=}")
+        result = []
+        for user in all_chats:
+            if user not in ya_int_chats:
+                result.append(user)
+        return result
+
     def get_ya_int_enrolled_chats(self) -> List[int]:
         """Get a list of all uids who have agreed to participate in the Yandex Internship program."""
         return [i.uid for i in self.session.query(YandexInternshipUser).filter(YandexInternshipUser.agreed).all()]
@@ -671,6 +702,16 @@ has been opened today: {exc}")
     def get_ya_int_not_enrolled_chats(self) -> List[int]:
         """Get a list of all uids who have not agreed to participate in the Yandex Internship program."""
         return [i.uid for i in self.session.query(YandexInternshipUser).filter(not YandexInternshipUser.agreed).all()]
+
+    def get_ya_int_flow_activated_chats(self) -> List[int]:
+        """Get a list of all uids who have agreed to participate in the Yandex Internship program."""
+        return [i.uid for i in (self.session.query(YandexInternshipUser)
+                                .filter(YandexInternshipUser.is_flow_activated).all())]
+
+    def get_ya_int_not_flow_activated_chats(self) -> List[int]:
+        """Get a list of all uids who have not agreed to participate in the Yandex Internship program."""
+        return [i.uid for i in (self.session.query(YandexInternshipUser)
+                                .filter(not YandexInternshipUser.is_flow_activated).all())]
 
     @staticmethod
     def get_superadmin_uids() -> list[int]:

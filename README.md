@@ -1,5 +1,7 @@
 # ITAM Bot
 
+[![Build Status](https://drone.seizure.icu/api/badges/voxel/itam-bot/status.svg)](https://drone.seizure.icu/voxel/itam-bot)
+
 ## How to run
 
 1. `docker compose up -d`

@@ -94,7 +94,7 @@ class UserData(Base):
     email = Column(Text)
 
 
-class UserSkills(Base):
+class UserSkill(Base):
     """User skills model for SQLAlchemy.
 
     Multiple skills per uid are allowed."""

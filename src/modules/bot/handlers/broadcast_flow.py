@@ -162,10 +162,18 @@ async def admin_broadcast_stage5(message: types.Message,
         scope = 'users'
     elif state_data['scope'] == btntext.ADMINS:
         scope = 'admins'
-    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_ENROLLED:
-        scope = 'ya_int-enrolled'
+    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_NOT_SIGNED_UP:
+        scope = 'ya_int-not_signed_up'
+    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_SIGNED_UP:
+        scope = 'ya_int-signed_up'
     elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_NOT_ENROLLED:
         scope = 'ya_int-not_enrolled'
+    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_ENROLLED:
+        scope = 'ya_int-enrolled'
+    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_NOT_FLOW_STARTED:
+        scope = 'ya_int-not_flow_started'
+    elif state_data['scope'] == btntext.YANDEX_INTERNSHIP_FLOW_STARTED:
+        scope = 'ya_int-flow_started'
     else:
         await bot.send_message(message.from_user.id, "Неверный тип рассылки")
         await state.finish()
@@ -173,7 +181,8 @@ async def admin_broadcast_stage5(message: types.Message,
     media_type = state_data['msg_type']
     # Send broadcast
     if media_type == ContentType.TEXT:
-        asyncio.get_event_loop().create_task(bot_broadcast.broadcast(state_data['message'], scope, ContentType.TEXT))
+        asyncio.get_event_loop().create_task(bot_broadcast.broadcast(state_data['message'], scope,
+                                                                     ContentType.TEXT, is_html=True))
     else:
         (asyncio.get_event_loop()
          .create_task(bot_broadcast.broadcast(state_data['message'],

@@ -4,7 +4,7 @@
 from typing import List, Any
 # from typing import Union
 # from aiogram import types
-# from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.types.message import ParseMode
 from aiogram.types import ContentType
 from aiogram import Bot
@@ -29,7 +29,7 @@ class BotBroadcastFunctions:
     async def broadcast(self, content: str, scope: str,  # noqa: C901
                         media_type: str,
                         custom_scope: list | None = None,
-                        is_markdown: bool | None = None,
+                        is_html: bool | None = None,
                         media: str | None = None) -> None:
         """Broadcast message to all chats (handles multiple media types)."""
         if media is not None and media_type is None:
@@ -38,6 +38,7 @@ class BotBroadcastFunctions:
                 and media_type is not None
                 and media_type != ContentType.TEXT):
             raise ValueError("Media is not specified")
+        custom_keyboard: InlineKeyboardMarkup | None = None
         if custom_scope:
             chat_ids = custom_scope
         elif scope == 'all':
@@ -46,10 +47,20 @@ class BotBroadcastFunctions:
             chat_ids = self.db.get_admin_chats()
         elif scope == 'users':
             chat_ids = self.db.get_user_chats()
-        elif scope == 'ya_int-enrolled':
-            chat_ids = self.db.get_ya_int_enrolled_chats()
+        elif scope == 'ya_int-not_signed_up':
+            chat_ids = self.db.get_ya_int_not_registered_chats()
+            custom_keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton("🔥 Подать заявку",
+                                                                              callback_data='skill:yandex_internship'))
+        elif scope == 'ya_int-signed_up':
+            chat_ids = self.db.get_ya_int_registered_chats()
         elif scope == 'ya_int-not_enrolled':
             chat_ids = self.db.get_ya_int_not_enrolled_chats()
+        elif scope == 'ya_int-enrolled':
+            chat_ids = self.db.get_ya_int_enrolled_chats()
+        elif scope == 'ya_int-flow_started':
+            chat_ids = self.db.get_ya_int_flow_activated_chats()
+        elif scope == 'ya_int-not_flow_started':
+            chat_ids = self.db.get_ya_int_not_flow_activated_chats()
         else:
             raise ValueError("Invalid scope")
         self.log.debug(f"Broadcasting message to \
@@ -59,7 +70,8 @@ class BotBroadcastFunctions:
         if media is None:
             await self._send_text_broadcast(content,
                                             chat_ids,
-                                            is_markdown=is_markdown)
+                                            is_html=is_html,
+                                            custom_keyboard=custom_keyboard)
             return
         if media_type in [ContentType.PHOTO, ContentType.VIDEO,
                           ContentType.VIDEO_NOTE]:
@@ -67,19 +79,20 @@ class BotBroadcastFunctions:
                                              media,
                                              media_type,  # type: ignore
                                              chat_ids,
-                                             is_markdown=is_markdown)
+                                             is_html=is_html,
+                                             custom_keyboard=custom_keyboard)
             return
         raise ValueError("Invalid media type")
 
     async def _send_text_broadcast(self, content: str,
                                    chat_ids: List[int],
-                                   is_markdown: bool | None = None):
+                                   is_html: bool | None = None,
+                                   custom_keyboard: InlineKeyboardMarkup | None = None):
         for cid in chat_ids:
             try:
                 await self.bot.send_message(cid, content,
-                                            parse_mode=(ParseMode.MARKDOWN
-                                                        if is_markdown
-                                                        else None))
+                                            parse_mode=ParseMode.HTML if is_html else None,
+                                            reply_markup=custom_keyboard)
             except Exception as exc:
                 self.log.debug(f"Failed to send broadcast message to chat \
 {cid}: {exc}; user probably blocked the bot")
@@ -88,7 +101,8 @@ class BotBroadcastFunctions:
                                     media: str,
                                     media_type: str,
                                     chat_ids: List[int],
-                                    is_markdown: bool | None = None):
+                                    is_html: bool | None = None,
+                                    custom_keyboard: InlineKeyboardMarkup | None = None):
         send_func: Any | None = None
         _ = send_func  # Linter error: unused variable
         match media_type:
@@ -102,19 +116,20 @@ class BotBroadcastFunctions:
                 raise ValueError("Invalid media type")
         for cid in chat_ids:
             await send_func(cid, media, caption=caption,
-                            is_markdown=is_markdown)
+                            is_html=is_html,
+                            custom_keyboard=custom_keyboard)
 
     async def _send_photo(self, cid: int,
                           photo: str,
                           caption: str | None = None,
-                          is_markdown: bool | None = None):
+                          is_html: bool | None = None,
+                          custom_keyboard: InlineKeyboardMarkup | None = None):
         try:
             await self.bot.send_photo(cid,
                                       photo,
                                       caption=caption,
-                                      parse_mode=(ParseMode.MARKDOWN
-                                                  if is_markdown
-                                                  else None))
+                                      parse_mode=ParseMode.HTML if is_html else None,
+                                      reply_markup=custom_keyboard)
         except Exception as exc:
             self.log.debug(f"Failed to send broadcast message to chat {cid}: \
 {exc}; user probably blocked the bot")
@@ -123,14 +138,14 @@ class BotBroadcastFunctions:
                           cid: int,
                           video: str,
                           caption: str | None = None,
-                          is_markdown: bool | None = None):
+                          is_html: bool | None = None,
+                          custom_keyboard: InlineKeyboardMarkup | None = None):
         try:
             await self.bot.send_video(cid,
                                       video,
                                       caption=caption,
-                                      parse_mode=(ParseMode.MARKDOWN
-                                                  if is_markdown
-                                                  else None))
+                                      parse_mode=ParseMode.HTML if is_html else None,
+                                      reply_markup=custom_keyboard)
         except Exception as exc:
             self.log.debug(f"Failed to send broadcast message to chat {cid}: \
 {exc}; user probably blocked the bot")
@@ -138,9 +153,11 @@ class BotBroadcastFunctions:
     async def _send_video_note(self, cid: int,
                                video_note: str,
                                caption: str | None = None,
-                               is_markdown: bool | None = None):
+                               is_html: bool | None = None,
+                               custom_keyboard: InlineKeyboardMarkup | None = None):
         _ = caption
-        _ = is_markdown
+        _ = is_html
+        _ = custom_keyboard  # Do not send custom keyboards with video notes
         try:
             await self.bot.send_video_note(cid, video_note)
         except Exception as exc:

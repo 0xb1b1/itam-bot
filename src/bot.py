@@ -156,7 +156,11 @@ async def bot_coworking_location(call: types.CallbackQuery) -> None:
 
 # Normal messages
 async def answer(message: types.Message) -> None:
-    """Answer to random messages and messages from buttons"""
+    """Answer to random messages and messages from buttons."""
+    # If the chat is private, send a message asking if the user is lost and restore their keyboard
+    if bot_generic.chat_is_private(message):
+        await message.answer(replies.plain_message_pm_answer(),
+                             reply_markup=bot_generic.get_main_keyboard(message.from_user.id))
     if not db.is_uname_set(message.from_user.id):  # TODO: Measure performance hit
         if not bot_generic.chat_is_group(message):
             if db.does_user_exist(message.from_user.id):

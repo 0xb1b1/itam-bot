@@ -3,6 +3,7 @@
 
 """Bot administration handlers."""
 # region Regular dependencies
+import io, csv
 from typing import Union
 from aiogram import Bot, Dispatcher
 from aiogram import types
@@ -202,7 +203,24 @@ async def get_users(msg: types.Message):
 @dp.message_handler(commands=['get_users_verbose'])
 async def get_users_verbose(msg: types.Message):
     """Get verbose user info."""
-    await bot_generic.send_long_message(msg.from_user.id, db.get_users_verbose_str())
+    # await bot_generic.send_long_message(msg.from_user.id, db.get_users_verbose_str())
+    # Create a CSV file with the list of users
+    users = db.get_users_full()
+    csv_file = io.StringIO()
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(['User ID', 'Username', 'Phone number', 'Email', 'First name', 'Last name', 'Skills'])
+    for user in users:
+        csv_writer.writerow([user[0].uid,
+                             user[0].uname if user[0].uname is not None else '',
+                             f'+{user[1].phone}' if user[1].phone is not None else '',
+                             user[1].email if user[1].email is not None else '',
+                             user[0].first_name,
+                             user[0].last_name if user[0].last_name is not None else '',
+                             ', '.join([str(skill.skill) for skill in user[2]])]
+                            )
+    csv_file.seek(0)
+    await bot.send_document(msg.from_user.id, ('user_list.csv', csv_file), caption='User list')
+    csv_file.close()
 
 
 @dp.message_handler(admin_only, commands=['get_id'])

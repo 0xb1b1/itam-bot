@@ -320,6 +320,10 @@ def please_click_start() -> str:
     return "🛂‼️ Пожалуйста, нажмите сюда: /start"
 
 
+def plain_message_pm_answer() -> str:
+    return "🔦 Команда не распознана. Пожалуйста, используй меню"
+
+
 def help_message() -> str:
     return """🤨 Помощь ITAM Bot
 
