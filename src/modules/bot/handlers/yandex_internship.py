@@ -63,7 +63,7 @@ inlStartMenu = InlineKeyboardMarkup(row_width=2).add(inlStartDisagree,
 
 @dp.callback_query_handler(lambda c: c.data == 'skill:yandex_internship')
 async def yandex_internship_start(msg: Union[types.Message,
-                                             types.CallbackQuery]):
+                                             types.CallbackQuery], deeplink: bool = False):
     """Handle /yandex_internship command or button press."""
     if isinstance(msg, types.CallbackQuery):
         await msg.answer()
@@ -71,8 +71,13 @@ async def yandex_internship_start(msg: Union[types.Message,
         msg = msg.message
     else:
         from_user = msg.from_user.id
-    if db.is_ya_int_user(from_user):
+    if not deeplink and db.is_ya_int_user(from_user):
         await profile_menu(msg)
+        return
+    if deeplink and db.is_ya_int_user(from_user):
+        await msg.answer(ya_replies.already_enrolled_warning(),
+                         reply_markup=bot_generic.get_main_keyboard(from_user))
+        await profile_menu(msg, new_msg=True)
         return
     # # Remove previous message
     # await msg.delete()
@@ -93,10 +98,14 @@ async def yandex_internship_start(msg: Union[types.Message,
                      reply_markup=inlStartMenu)
 
 
-async def profile_menu(msg: types.Message):
+async def profile_menu(msg: types.Message, new_msg: bool = False):
     """Send profile menu to user."""
-    await msg.edit_text(ya_replies.profile_menu(),
-                        reply_markup=ya_kbs.profile_menu())
+    if not new_msg:
+        await msg.edit_text(ya_replies.profile_menu(),
+                            reply_markup=ya_kbs.profile_menu())
+    else:
+        await msg.answer(ya_replies.profile_menu(),
+                         reply_markup=ya_kbs.profile_menu())
 
 
 @dp.callback_query_handler(lambda c: c.data == 'skill:yandex_internship:enrollment:remove_user')
@@ -346,6 +355,10 @@ async def yandex_control_panel(call: Union[types.CallbackQuery, types.Message],
         call = call.message
     else:
         from_user = call.from_user.id
+    if from_user not in [1989957381, 232200895, 201667444]:
+        await call.answer(replies.admin_panel_access_denied())
+        log.info(f"User {from_user} tried to open the admin panel; denied access")
+        return
     # Get analytics from database
     if send_message:
         await call.answer(replies.yandex_internship_control_panel(db.get_ya_int_all_users_count(),

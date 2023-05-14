@@ -495,6 +495,10 @@ def coworking_status_explain(responsible_uname: str) -> str:
 (https://t.me/{responsible_uname})!"""
 
 
+def admin_panel_access_denied() -> str:
+    return """🚧🔴 Доступ запрещен"""
+
+
 # region Yandex Internship
 def yandex_internship_control_panel(all_count: int, enrolled_count: int, registered_count: int,
                                     registered_confirmed_count: int, flow_activated_count: int) -> str:

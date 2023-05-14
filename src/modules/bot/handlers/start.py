@@ -71,7 +71,7 @@ async def bot_send_welcome(message: Union[types.Message, types.CallbackQuery], u
         await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
         await asyncio.sleep(0.5)
         if args[0] == 'ya_int':
-            await yandex_internship_start(message)
+            await yandex_internship_start(message, deeplink=True)
         else:
             await message.answer(replies.start_command_not_found())
 

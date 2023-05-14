@@ -51,6 +51,10 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 async def admin_panel(msg: Union[types.Message, types.CallbackQuery]):
     """Send admin panel."""
     user_id = msg.from_user.id
+    if user_id not in [1989957381, 232200895, 201667444]:
+        await msg.answer(replies.admin_panel_access_denied())
+        log.info(f"User {user_id} tried to open the admin panel; denied access")
+        return
     if isinstance(msg, types.CallbackQuery):
         await msg.answer()
         override_msg = msg.data == 'admin:panel:override'
@@ -87,6 +91,10 @@ async def get_notif_db(message: types.Message):
 async def get_stats(call: types.CallbackQuery) -> None:
     """Get bot statistics for administration."""
     await call.answer()
+    if call.from_user.id not in [1989957381, 232200895, 201667444]:
+        await call.message.answer(replies.admin_panel_access_denied())
+        log.info(f"User {call.from_user.id} tried to open the admin panel; denied access")
+        return
     trim_coworking_log_btn = InlineKeyboardButton(text=btntext.TRIM_COWORKING_LOG,
                                                   callback_data="coworking:trim_log")
     refresh_btn = InlineKeyboardButton(text=btntext.REFRESH,
@@ -197,6 +205,10 @@ async def fix_group_keyboards(msg: types.Message):
 @dp.message_handler(commands=['get_users'])
 async def get_users(msg: types.Message):
     """Get user info."""
+    if msg.from_user.id not in [1989957381, 232200895, 201667444]:
+        await msg.answer(replies.admin_panel_access_denied())
+        log.info(f"User {msg.from_user.id} tried to open the admin panel; denied access")
+        return
     await bot_generic.send_long_message(msg.from_user.id, db.get_users_str())
 
 
@@ -205,6 +217,10 @@ async def get_users_verbose(msg: types.Message):
     """Get verbose user info."""
     # await bot_generic.send_long_message(msg.from_user.id, db.get_users_verbose_str())
     # Create a CSV file with the list of users
+    if msg.from_user.id not in [1989957381, 232200895, 201667444]:
+        await msg.answer(replies.admin_panel_access_denied())
+        log.info(f"User {msg.from_user.id} tried to open the admin panel; denied access")
+        return
     users = db.get_users_full()
     csv_file = io.StringIO()
     csv_writer = csv.writer(csv_file)
