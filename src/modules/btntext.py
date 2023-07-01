@@ -67,6 +67,7 @@ COWORKING_LOCATION_SHORT = "📍 Местоположение"
 # Skills
 BOT_SKILL_YANDEX_INTERNSHIP = "🧑‍💼 Яндекс Стажировка"
 BOT_SKILL_INSTITUTIONS = "🎓 Институты МИСИС"
+BOT_SKILL_NAVIGATION = "🧭 Навигация"
 
 # Yandex Internship
 INL_ADMIN_YANDEX_INTERNSHIP = "🧑‍💼 Яндекс Стажировка"

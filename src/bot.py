@@ -207,7 +207,8 @@ def run() -> None:
         chat_mgr, \
         clubs, \
         departments, \
-        yandex_internship
+        yandex_internship, \
+        navigation
     start.setup(dp, bot, db, log, bot_generic)
     skills.setup(dp, bot, db, log, bot_generic)
     administration.setup(dp, bot, db, log, bot_broadcast, bot_generic)
@@ -219,6 +220,7 @@ def run() -> None:
     clubs.setup(dp, bot, db, log, bot_broadcast, bot_generic)
     departments.setup(dp, bot, db, log, bot_generic)
     yandex_internship.setup(dp, bot, db, log, bot_broadcast, bot_generic)
+    navigation.setup(dp, bot, db, log, bot_generic)
     # endregion
 
     # Add plaintext handler

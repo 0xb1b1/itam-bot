@@ -121,7 +121,7 @@ def profile_edit_birthday(birthday: datetime):
 
 
 def profile_edit_email(email: str) -> str:
-    return f"""🛂 Изменение даты рождения
+    return f"""🛂 Изменение почты
 
 Текущий email: {email}
 

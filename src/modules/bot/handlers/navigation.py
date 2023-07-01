@@ -1,55 +1,67 @@
 #!/usr/bin/env python3
 
-"""Bot skill reply handlers."""
+"""MISIS Entrance Guide module."""
 # region Regular dependencies
-import logging
+from typing import Union
 from aiogram import Bot, Dispatcher
 from aiogram import types
-# from aiogram.types.message import ParseMode
+from aiogram.types.message import ParseMode
 from logging import Logger
-
 # endregion
+
 # region Local dependencies
-# import modules.bot.tools as bot_tools
 from modules import markup as nav
-from modules import btntext
 from modules.db import DBManager
+from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
-from modules.bot import decorators as dp
-from .replies import skills as sk_replies
+# from modules.bot.states import *
+from modules.bot import decorators as dp  # Bot decorators
+from .replies import navigation as dir_replies
+from .skills import bot_skills_menu
+from .keyboards import navigation as dir_keyboards
+
 # endregion
 
 # region Passed by setup()
 db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 log: Logger = None  # type: ignore
+bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
 
 # region Lambda functions
-debug_dec = lambda message: log.debug(f'User {message.from_user.id} from chat \
-{message.chat.id} called command `{message.text}`') or True
+debug_dec = lambda message: log.debug(f'User {message.from_user.id} from \
+chat {message.chat.id} called command `{message.text}`') or True
 admin_only = lambda message: db.is_admin(message.from_user.id)
 groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 # endregion
 
+# region Menus
+# endregion
 
-@dp.message_handler(lambda message: message.text == btntext.BOT_SKILLS_BTN)
-async def bot_skills_menu(message: types.Message, reopened: bool = False):
-    if not reopened:
-        if not db.user_exists(message.from_user.id):
-            db.add_regular_user(message.from_user.id,
-                                message.from_user.username,
-                                message.from_user.first_name,
-                                message.from_user.last_name)
-    await message.answer(sk_replies.bot_skills_menu(), reply_markup=nav.botSkillsMenu)
+
+@dp.callback_query_handler(lambda c: c.data == 'skill:navigation')
+async def welcome(call: Union[types.CallbackQuery, types.Message]):
+    await call.answer()
+    await call.message.edit_text(dir_replies.welcome(),
+                                 parse_mode=ParseMode.HTML,
+                                 reply_markup=dir_keyboards.main_menu())
+
+
+@dp.callback_query_handler(lambda c: c.data == 'navigation:back')
+async def back(call: types.CallbackQuery):
+    """Go back to the skills menu."""
+    await call.answer()
+    await bot_skills_menu(call.message)
+    await call.message.delete()
 
 
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
+          logger: Logger,
           generic: BotGenericFunctions):
     global bot
     global db

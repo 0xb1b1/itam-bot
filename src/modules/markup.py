@@ -81,7 +81,9 @@ yandexInternshipSkill = InlKbBtn(btns.BOT_SKILL_YANDEX_INTERNSHIP,
                                  callback_data='skill:yandex_internship')
 botSkillsMenu = (InlKbMarkup(row_width=1).add(yandexInternshipSkill,
                                               InlKbBtn(btns.BOT_SKILL_INSTITUTIONS,
-                                                       callback_data='skill:departments')))
+                                                       callback_data='skill:departments'),
+                                              InlKbBtn(btns.BOT_SKILL_NAVIGATION,
+                                                       callback_data='skill:navigation')))
 
 
 def get_skill_inl_kb(active_skills: List[Skill]) -> InlKbMarkup:
