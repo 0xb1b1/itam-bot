@@ -7,10 +7,10 @@ from typing import Union
 from aiogram import Bot, Dispatcher
 from aiogram import types
 from aiogram.types.message import ParseMode
-from logging import Logger
 # endregion
 
 # region Local dependencies
+from config import log
 from modules import markup as nav
 from modules.db import DBManager
 from modules.bot.broadcast import BotBroadcastFunctions
@@ -52,15 +52,12 @@ async def welcome(call: Union[types.CallbackQuery, types.Message]):
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: Logger,
           generic: BotGenericFunctions):
     global bot
     global db
-    global log
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    log = logger
     db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):

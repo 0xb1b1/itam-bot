@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: itam-bot
+  namespace: itam
+  labels:
+    app: dm-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dm-worker
+  template:
+    metadata:
+      labels:
+        app: dm-worker
+    spec:
+      containers:
+        - name: worker
+          image: 0xb1b1/itam-bot:latest
+          imagePullPolicy: Always
+          ports:
+          - name: http
+            containerPort: 8000
+            protocol: TCP
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+          readinessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            timeoutSeconds: 2
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 700Mi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: common-secrets
+                  key: POSTGRES_PASSWORD
+            - name: TELEGRAM_SESSION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: common-secrets
+                  key: TELEGRAM_SESSION_TOKEN
+            - name: TELEGRAM_API_ID
+              valueFrom:
+                secretKeyRef:
+                  name: common-secrets
+                  key: TELEGRAM_API_ID
+            - name: TELEGRAM_API_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: common-secrets
+                  key: TELEGRAM_API_HASH
+          envFrom:
+            - configMapRef:
+                name: common-config

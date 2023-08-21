@@ -16,6 +16,7 @@ from logging import Logger
 # endregion
 
 # region Local dependencies
+from config import log
 from modules import replies
 from modules.db import DBManager
 from modules.bot.generic import BotGenericFunctions
@@ -80,15 +81,12 @@ async def bot_send_welcome(message: Union[types.Message, types.CallbackQuery], u
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
           generic: BotGenericFunctions):
     global bot
     global db
-    global log
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    log = logger
     db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):

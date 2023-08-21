@@ -277,19 +277,16 @@ async def reply_with_id(message: types.Message):
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: Logger,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     global bot
     global db
-    global log
     global bot_broadcast
     global bot_generic
     global coworking
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    log = logger
     db = database
     coworking = CoworkingManager(db)
     for func in globals().values():

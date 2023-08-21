@@ -15,11 +15,11 @@ from aiogram.types import InlineKeyboardMarkup, \
     InlineKeyboardButton, KeyboardButton, \
     ReplyKeyboardMarkup, ReplyKeyboardRemove
 from aiogram.types.chat import ChatActions
-from logging import Logger
 import csv
 # endregion
 
 # region Local dependencies
+from config import log
 from modules import markup as nav
 from modules import btntext as btns
 from modules import replies
@@ -493,19 +493,16 @@ of hours you specified.')
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: Logger,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     """Set up handlers for dispatcher."""
     global bot
     global db
-    global log
     global bot_broadcast
     global bot_generic
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    log = logger
     db = database
     loop = get_event_loop()
     loop.create_task(ya_loops.yandex_internship_loop(db, bot, log))

@@ -13,10 +13,10 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 # from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ChatType
-from logging import Logger
 # endregion
 
 # region Local dependencies
+from config import log
 from modules import markup as nav
 from modules import btntext
 from modules.coworking import Manager as CoworkingManager
@@ -236,13 +236,11 @@ async def get_coworking_status_log(message: types.Message) -> None:
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions,
           cw: BotCoworkingFunctions):
     global bot
     global db
-    global log
     global bot_broadcast
     global bot_generic
     global coworking
@@ -250,7 +248,6 @@ def setup(dispatcher: Dispatcher,
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    log = logger
     db = database
     bot_cw = cw
     coworking = CoworkingManager(db)

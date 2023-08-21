@@ -10,6 +10,7 @@ from logging import Logger
 
 # endregion
 # region Local dependencies
+from config import log
 # import modules.bot.tools as bot_tools
 from modules import markup as nav
 from modules import btntext
@@ -49,15 +50,12 @@ async def bot_skills_menu(message: types.Message, reopened: bool = False):
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
           generic: BotGenericFunctions):
     global bot
     global db
-    global log
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    log = logger
     db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):

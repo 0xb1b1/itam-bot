@@ -11,10 +11,10 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, \
     ReplyKeyboardRemove, ContentType
-from logging import Logger
 # endregion
 
 # region Local dependencies
+from config import log
 from modules import markup as nav
 from modules import btntext
 from modules import replies
@@ -200,19 +200,16 @@ async def admin_broadcast_stage5(message: types.Message,
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     """Set up handlers for admin broadcast flow."""
     global bot
     global db
-    global log
     global bot_broadcast
     global bot_generic
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    log = logger
     db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):

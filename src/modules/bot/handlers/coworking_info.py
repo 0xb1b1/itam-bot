@@ -11,6 +11,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 # endregion
 
 # region Local dependencies
+from config import log
 from modules import btntext
 from modules.coworking import Manager as CoworkingManager
 from modules import replies
@@ -86,13 +87,11 @@ async def coworking_status_explain(call: types.CallbackQuery) -> None:
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions,
           cw: BotCoworkingFunctions):
     global bot
     global db
-    global log
     global bot_broadcast
     global bot_generic
     global coworking
@@ -100,7 +99,6 @@ def setup(dispatcher: Dispatcher,
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    log = logger
     db = database
     bot_cw = cw
     coworking = CoworkingManager(db)

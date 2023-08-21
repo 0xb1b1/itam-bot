@@ -15,6 +15,7 @@ from logging import Logger
 
 # endregion
 # region Local dependencies
+from config import log
 from modules import markup as nav
 from modules import btntext
 from modules import replies
@@ -323,16 +324,13 @@ async def profile_setup_phone(message: types.Message, state: FSMContext):
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
           database: DBManager,
-          logger: logging.Logger,
           generic: BotGenericFunctions):
     """Setup handlers for bot."""
     global bot
     global db
-    global log
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    log = logger
     db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):
