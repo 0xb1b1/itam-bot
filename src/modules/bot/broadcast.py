@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Bot coworking-related functions."""
 # CYCLE NOTICE: Used in . scheduled.py; . coworking.py
 
@@ -35,8 +37,8 @@ class BotBroadcastFunctions:
         if media is not None and media_type is None:
             raise ValueError("Media type is not specified")
         if (media is None
-                and media_type is not None
-                and media_type != ContentType.TEXT):
+                and media_type is not None  # noqa: W503
+                and media_type != ContentType.TEXT):  # noqa: W503
             raise ValueError("Media is not specified")
         custom_keyboard: InlineKeyboardMarkup | None = None
         if custom_scope:
@@ -47,20 +49,6 @@ class BotBroadcastFunctions:
             chat_ids = self.db.get_admin_chats()
         elif scope == 'users':
             chat_ids = self.db.get_user_chats()
-        elif scope == 'ya_int-not_signed_up':
-            chat_ids = self.db.get_ya_int_not_registered_chats()
-            custom_keyboard = InlineKeyboardMarkup().add(InlineKeyboardButton("🔥 Подать заявку",
-                                                                              callback_data='skill:yandex_internship'))
-        elif scope == 'ya_int-signed_up':
-            chat_ids = self.db.get_ya_int_registered_chats()
-        elif scope == 'ya_int-not_enrolled':
-            chat_ids = self.db.get_ya_int_not_enrolled_chats()
-        elif scope == 'ya_int-enrolled':
-            chat_ids = self.db.get_ya_int_enrolled_chats()
-        elif scope == 'ya_int-flow_started':
-            chat_ids = self.db.get_ya_int_flow_activated_chats()
-        elif scope == 'ya_int-not_flow_started':
-            chat_ids = self.db.get_ya_int_not_flow_activated_chats()
         else:
             raise ValueError("Invalid scope")
         self.log.debug(f"Broadcasting message to \

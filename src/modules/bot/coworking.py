@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Bot coworking-related functions."""
 
 # import asyncio

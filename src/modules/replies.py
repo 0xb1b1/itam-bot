@@ -35,7 +35,7 @@ def welcome_message_instructions() -> str:
 
 
 def welcome_message_go() -> str:
-    return f"""Поехали! 🚀"""
+    return """Поехали! 🚀"""
 
 
 def start_command_found_calling_skill() -> str:
@@ -86,7 +86,7 @@ def profile_info(info) -> str:
 {fields['first_name']}: {is_set(info['first_name'])}
 {fields['last_name']}: {is_set(info['last_name'])}
 {fields['birthday']}: {datetime.strftime(info['birthday'],
-                                         "%d.%m.%Y") 
+                                         "%d.%m.%Y")
     if info['birthday'] is not None else is_set(None)}
 {fields['phone']}: {f"+{info['phone']}" if info['phone'] is not None else btn.NOT_SET}
 {fields['email']}: {is_set(info['email'])}
@@ -139,34 +139,34 @@ def profile_edit_phone(phone: int) -> str:
 
 
 def profile_edit_skills() -> str:
-    return f"""🛂 Изменение компетенций
+    return """🛂 Изменение компетенций
 
 Выбери компетенции, которые тебе ближе"""
 
 
 def invalid_date_try_again() -> str:
-    return f"""❌ Неверный формат даты
+    return """❌ Неверный формат даты
 
 Формат: DD.MM.YYYY
 Попробуй еще раз :)"""
 
 
 def invalid_email_try_again() -> str:
-    return f"""❌ Неверный формат email
+    return """❌ Неверный формат email
 
 Формат: example@exampledomain.com
 Попробуй еще раз :)"""
 
 
 def invalid_phone_try_again() -> str:
-    return f"""❌ Неверный формат номера телефона
+    return """❌ Неверный формат номера телефона
 
 Формат: +79991230101 или 79991230101
 Попробуй еще раз :)"""
 
 
 def please_start_bot() -> str:
-    return f"""❌ Что-то пошло не так... Давай попробуем восстановить твой аккаунт: /start"""
+    return """❌ Что-то пошло не так... Давай попробуем восстановить твой аккаунт: /start"""
 
 
 # region Profile setup
@@ -497,18 +497,3 @@ def coworking_status_explain(responsible_uname: str) -> str:
 
 def admin_panel_access_denied() -> str:
     return """🚧🔴 Доступ запрещен"""
-
-
-# region Yandex Internship
-def yandex_internship_control_panel(all_count: int, enrolled_count: int, registered_count: int,
-                                    registered_confirmed_count: int, flow_activated_count: int) -> str:
-    return f"""🔑 Панель управления Яндекс Стажировкой
-
-📊 Статистика
-Всего пользователей: {all_count}
-Согласились на стажу: {enrolled_count}
-Зарегистрированы на стороне Яндекса: {registered_count}
-Подтвердили регистрацию: {registered_confirmed_count}
-Начали неделю мотивации: {flow_activated_count}
-"""
-# endregion

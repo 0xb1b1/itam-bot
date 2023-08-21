@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Bot help functions"""
 
 from aiogram import types

@@ -17,23 +17,21 @@ from modules import replies
 from modules.db import DBManager
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
-from modules.bot.states import *
 from modules.bot import decorators as dp
 # endregion
 
 # region Passed by setup()
 db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
-log: Logger = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
 
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} from \
-chat {message.chat.id} called command `{message.text}`') or True
-admin_only = lambda message: db.is_admin(message.from_user.id)
-groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+chat {message.chat.id} called command `{message.text}`') or True  # noqa: E731
+admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 
 
@@ -44,11 +42,11 @@ async def clubs_menu(message: types.Message):
                          reply_markup=nav.inlClubsMenu)
 
 
-@dp.callback_query_handler(lambda c: c.data in [i+'_club_info' for i in ['ctf',
-                                                                         'hackathon',
-                                                                         'design',
-                                                                         'gamedev',
-                                                                         'robotics']])
+@dp.callback_query_handler(lambda c: c.data in [i + '_club_info' for i in ['ctf',
+                                                                           'hackathon',
+                                                                           'design',
+                                                                           'gamedev',
+                                                                           'robotics']])
 async def club_info(call: types.CallbackQuery) -> None:
     """Answer with requested club info."""
     await call.answer()

@@ -22,7 +22,7 @@ from modules import replies
 from modules.db import DBManager
 from modules.models import Skill
 from modules.bot.generic import BotGenericFunctions
-from modules.bot.states import *
+from modules.bot.states import UserEditProfile, UserProfileSetup
 from modules.bot import decorators as dp
 from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
 # endregion
@@ -30,15 +30,14 @@ from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
 # region Passed by setup()
 db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
-log: Logger = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
 
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} from \
-chat {message.chat.id} called command `{message.text}`') or True
-admin_only = lambda message: db.is_admin(message.from_user.id)
-groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+chat {message.chat.id} called command `{message.text}`') or True  # noqa: E731
+admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 
 
@@ -86,15 +85,15 @@ async def edit_profile(call: types.CallbackQuery, secondary_run: bool = False) -
     await mkb_remove.delete()
 
 
-@dp.callback_query_handler(lambda c: c.data.startswith('profile:edit:') and
-                           not c.data.startswith('profile:edit:skill:') and
-                           not c.data == 'profile:edit:done')
+@dp.callback_query_handler(lambda c: c.data.startswith('profile:edit:')
+                           and not c.data.startswith('profile:edit:skill:')  # noqa: W503
+                           and not c.data == 'profile:edit:done')  # noqa: W503
 async def edit_profile_action(call: types.CallbackQuery, state: FSMContext) -> None:
     """Edit user profile - select action."""
     await call.answer()
     user_data = db.get_user_data(call.from_user.id)
     await state.update_data(profile_call=call)
-    fn = lambda x: f'profile:edit:{x}'
+    fn = lambda x: f'profile:edit:{x}'  # noqa: E731
     if call.data == fn('first_name'):
         await call.message.edit_text(replies.profile_edit_first_name(user_data['first_name'],
                                                                      user_data['last_name']))

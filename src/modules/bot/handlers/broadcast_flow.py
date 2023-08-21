@@ -28,16 +28,15 @@ from modules.bot import decorators as dp
 # region Passed by setup()
 db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
-log: Logger = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
 
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} \
-from chat {message.chat.id} called command `{message.text}`') or True
-admin_only = lambda message: db.is_admin(message.from_user.id)
-groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+from chat {message.chat.id} called command `{message.text}`') or True  # noqa: E731
+admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 
 # Message types
@@ -71,6 +70,8 @@ async def admin_broadcast_stage0(message: Union[types.Message,
                                                 types.CallbackQuery],
                                  state: FSMContext) -> None:
     """Broadcast message to all users (admin, stage 0)."""
+    if isinstance(message, types.CallbackQuery):
+        await message.answer()
     message = (message.message
                if isinstance(message, types.CallbackQuery)
                else message)

@@ -20,16 +20,13 @@ from modules.models import CoworkingStatus
 from modules.bot.coworking import BotCoworkingFunctions
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
-from modules.bot.states import *
 from modules.buttons import coworking as cwbtn  # Coworking mutation buttons
 from modules.bot import decorators as dp
-from logging import Logger
 # endregion
 
 # region Passed by setup()
 db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
-log: Logger = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 bot_cw: BotCoworkingFunctions = None  # type: ignore
@@ -38,9 +35,9 @@ coworking: CoworkingManager = None  # type: ignore
 
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} from \
-chat {message.chat.id} called command `{message.text}`') or True
-admin_only = lambda message: db.is_admin(message.from_user.id)
-groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+chat {message.chat.id} called command `{message.text}`') or True  # noqa: E731
+admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 
 

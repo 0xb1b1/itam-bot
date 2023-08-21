@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Decorators for bot commands and message handlers"""
 
 

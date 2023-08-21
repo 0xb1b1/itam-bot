@@ -36,22 +36,10 @@ inlCancelMenu = InlKbMarkup().add(inlCancelBtn)
 bc_scope_users = KeyboardButton(btns.USERS)
 bc_scope_admins = KeyboardButton(btns.ADMINS)
 bc_scope_everyone = KeyboardButton(btns.EVERYONE)
-bc_scope_yandex_internship_not_signed_up = KeyboardButton(btns.YANDEX_INTERNSHIP_NOT_SIGNED_UP)
-bc_scope_yandex_internship_signed_up = KeyboardButton(btns.YANDEX_INTERNSHIP_SIGNED_UP)
-bc_scope_yandex_internship_not_enrolled = KeyboardButton(btns.YANDEX_INTERNSHIP_NOT_ENROLLED)
-bc_scope_yandex_internship_enrolled = KeyboardButton(btns.YANDEX_INTERNSHIP_ENROLLED)
-bc_scope_yandex_internship_not_flow_started = KeyboardButton(btns.YANDEX_INTERNSHIP_NOT_FLOW_STARTED)
-bc_scope_yandex_internship_flow_started = KeyboardButton(btns.YANDEX_INTERNSHIP_FLOW_STARTED)
 adminBroadcastScopeMenu = (ReplyKeyboardMarkup(row_width=1)
                            .add(bc_scope_users,
                                 bc_scope_admins,
-                                bc_scope_everyone,
-                                bc_scope_yandex_internship_not_signed_up,
-                                bc_scope_yandex_internship_signed_up,
-                                bc_scope_yandex_internship_not_enrolled,
-                                bc_scope_yandex_internship_enrolled,
-                                bc_scope_yandex_internship_not_flow_started,
-                                bc_scope_yandex_internship_flow_started))
+                                bc_scope_everyone))
 
 confirmBtn = KeyboardButton(btns.CONFIRM)
 cancelBtn = KeyboardButton(btns.CANCEL)
@@ -77,10 +65,7 @@ coworkingTempCloseDeltaMenu = (ReplyKeyboardMarkup(resize_keyboard=True).add(cwT
                                                                              cwTempClose30Btn,
                                                                              cwTempClose45Btn))
 
-yandexInternshipSkill = InlKbBtn(btns.BOT_SKILL_YANDEX_INTERNSHIP,
-                                 callback_data='skill:yandex_internship')
-botSkillsMenu = (InlKbMarkup(row_width=1).add(yandexInternshipSkill,
-                                              InlKbBtn(btns.BOT_SKILL_INSTITUTIONS,
+botSkillsMenu = (InlKbMarkup(row_width=1).add(InlKbBtn(btns.BOT_SKILL_INSTITUTIONS,
                                                        callback_data='skill:departments'),
                                               InlKbBtn(btns.BOT_SKILL_NAVIGATION,
                                                        callback_data='skill:navigation')))
@@ -113,16 +98,4 @@ def get_profile_edit_fields_kb() -> InlKbMarkup:
             continue
         kb.add(InlKbBtn(fields[key], callback_data=f'profile:edit:{key}'))
     kb.add(InlKbBtn('Готово', callback_data='profile:edit:done'))
-    return kb
-
-
-def get_yandex_internship_control_kb() -> InlKbMarkup:
-    """Get inline keyboard with Yandex internship control buttons."""
-    # All callbacks are in their respective Yandex Internship modules
-    kb = InlKbMarkup(row_width=3)
-    kb.add(InlKbBtn('📖 Список', callback_data='admin:yandex_internship:enrolled_list'),
-           InlKbBtn('⚙️ Валидировать', callback_data='admin:yandex_internship:validate_enrollment'),
-           InlKbBtn('❌ Удалить', callback_data='admin:yandex_internship:remove_user'),
-           InlKbBtn('🕑 Ускорить', callback_data='admin:yandex_internship:time_travel'),
-           InlKbBtn(btns.BACK, callback_data="admin:panel:override"))
     return kb

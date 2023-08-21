@@ -13,7 +13,7 @@ from psycopg2 import OperationalError as psycopg2OpError
 # region Local imports
 from modules.models import CoworkingStatus, CoworkingTrustedUser, GroupType, Skill
 from modules.models import Base, User, UserData, UserSkill, Group, ChatSettings, \
-                           Coworking, AdminCoworkingNotification, YandexInternshipUser
+    Coworking, AdminCoworkingNotification
 # endregion
 
 
@@ -219,7 +219,8 @@ class DBManager:
         users = self.session.query(User).all()
         users_data = self.session.query(UserData).all()
         users_skills = self.session.query(UserSkill).all()
-        return [(u, ud, [us for us in users_skills if us.uid == u.uid]) for u in users for ud in users_data if u.uid == ud.uid]
+        return [(u, ud, [us for us in users_skills if us.uid == u.uid])
+                for u in users for ud in users_data if u.uid == ud.uid]
 
     def get_admins(self) -> List[User]:
         """Get a list of admins"""
@@ -679,40 +680,6 @@ has been opened today: {exc}")
         """Get a list of all uids"""
         return [i.uid for i in self.session.query(User).all()]
 
-    def get_ya_int_registered_chats(self) -> List[int]:
-        """Get a list of all uids who have registered for the Yandex Internship program."""
-        return [i.uid for i in self.session.query(YandexInternshipUser).all()]
-
-    def get_ya_int_not_registered_chats(self) -> List[int]:
-        """Get a list of all uids who have not registered for the Yandex Internship program."""
-        # Get all users and select only those who are not in the YandexInternshipUser table
-        all_chats = self.get_all_chats()
-        ya_int_chats = self.get_ya_int_registered_chats()
-        self.log.debug(f"[Database] get_ya_int_not_registered_chats: {all_chats=}, {ya_int_chats=}")
-        result = []
-        for user in all_chats:
-            if user not in ya_int_chats:
-                result.append(user)
-        return result
-
-    def get_ya_int_enrolled_chats(self) -> List[int]:
-        """Get a list of all uids who have agreed to participate in the Yandex Internship program."""
-        return [i.uid for i in self.session.query(YandexInternshipUser).filter(YandexInternshipUser.agreed).all()]
-
-    def get_ya_int_not_enrolled_chats(self) -> List[int]:
-        """Get a list of all uids who have not agreed to participate in the Yandex Internship program."""
-        return [i.uid for i in self.session.query(YandexInternshipUser).filter(not YandexInternshipUser.agreed).all()]
-
-    def get_ya_int_flow_activated_chats(self) -> List[int]:
-        """Get a list of all uids who have agreed to participate in the Yandex Internship program."""
-        return [i.uid for i in (self.session.query(YandexInternshipUser)
-                                .filter(YandexInternshipUser.is_flow_activated).all())]
-
-    def get_ya_int_not_flow_activated_chats(self) -> List[int]:
-        """Get a list of all uids who have not agreed to participate in the Yandex Internship program."""
-        return [i.uid for i in (self.session.query(YandexInternshipUser)
-                                .filter(not YandexInternshipUser.is_flow_activated).all())]
-
     @staticmethod
     def get_superadmin_uids() -> list[int]:
         """Get a list of all super admins."""
@@ -721,207 +688,4 @@ has been opened today: {exc}")
     def is_superadmin(self, uid: int) -> bool:
         """Check if a user is a super admin."""
         return uid in self.get_superadmin_uids()
-    # endregion
-
-    # region Yandex Internship
-    def is_ya_int_user(self, uid: int) -> bool:
-        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).count() > 0
-
-    def get_ya_int_all_users(self) -> list[YandexInternshipUser]:
-        """Get a list of all users of the Yandex Internship (`agree` is either True or False)."""
-        return self.session.query(YandexInternshipUser).all()
-
-    def get_ya_int_all_users_count(self) -> int:
-        """Get the number of all users of the Yandex Internship (`agree` is either True or False)."""
-        return self.session.query(YandexInternshipUser).count()
-
-    def get_ya_int_all_enrolled_users_count(self) -> int:
-        """Get the number of users who have agreed to participate in the Yandex Internship program."""
-        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.agreed).count()
-
-    def get_ya_int_all_is_registered_users_count(self) -> int:
-        """Get the number of users who have registered for the Yandex Internship program."""
-        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.is_registered).count()
-
-    def get_ya_int_all_is_registered_confirmed_users_count(self) -> int:
-        """Get the number of users who have confirmed their registration for the Yandex Internship program."""
-        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.is_registered_confirmed).count()
-
-    def get_ya_int_all_is_flow_activated_users_count(self) -> int:
-        """Get the number of users who have activated the Yandex Internship program flow."""
-        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.is_flow_activated).count()
-
-    def set_ya_int_user(self, uid: int, agreed: bool):
-        """Set the user's agreement to participate in the Yandex Internship."""
-        if self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first() is not None:
-            self.del_ya_int_user(uid)
-        self.session.add(YandexInternshipUser(uid=uid, agreed=agreed))
-        self.session.commit()
-
-    def get_ya_int_user(self, uid: int) -> YandexInternshipUser | None:
-        """Get the user's agreement to participate in the Yandex Internship."""
-        if self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first() is None:
-            return None
-        return self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
-
-    def del_ya_int_user(self, uid: int) -> None:
-        """Delete the user's entry in the Yandex Internship table."""
-        self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).delete()
-        self.session.commit()
-
-    def set_ya_int_agreed(self, uid: int, agreed: bool) -> None:
-        """Set the user's agreement to participate in the Yandex Internship."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"agreed": agreed}))
-        self.session.commit()
-
-    def get_ya_int_is_notified_later(self, uid: int) -> bool:
-        """Get the user's status on upselling Yandex Internship enrollment."""
-        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
-        if user is None:
-            return False
-        return user.is_notified_later
-
-    def set_ya_int_is_notified_later(self, uid: int, is_notified_later: bool):
-        """Set the user's status on upselling Yandex Internship enrollment."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"is_notified_later": is_notified_later}))
-        self.session.commit()
-
-    def get_ya_int_is_registered_by_phone(self, phone: int) -> bool:
-        """Get the user's agreement to participate in the Yandex Internship."""
-        user = self.session.query(User).filter(User.phone == phone).first()
-        if user is None:
-            raise ValueError("User not found")
-        return self.get_ya_int_is_registered(user.uid)
-
-    def set_ya_int_is_registered_by_phone(self, phone: int, is_registered: bool):
-        """Set the user's agreement to participate in the Yandex Internship."""
-        user = self.session.query(UserData).filter(UserData.phone == phone).first()
-        if user is None:
-            raise ValueError("User not found")
-        self.set_ya_int_is_registered(user.uid, is_registered)
-
-    def get_ya_int_is_registered(self, uid: int) -> bool:
-        """Get the user's agreement to participate in the Yandex Internship."""
-        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
-        if user is None:
-            return False
-        return user.is_registered
-
-    def set_ya_int_is_registered(self, uid: int, is_registered: bool):
-        """Set the user's agreement to participate in the Yandex Internship."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"is_registered": is_registered}))
-        self.session.commit()
-
-    def get_ya_int_registered_notified_stage(self, uid: int) -> int:
-        """Get the user's agreement to participate in the Yandex Internship."""
-        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
-        if user is None:
-            return False
-        return user.registered_notified_stage
-
-    def set_ya_int_registered_notified_stage(self, uid: int, registered_notified_stage: int):
-        """Set the user's agreement to participate in the Yandex Internship."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"registered_notified_stage": registered_notified_stage}))
-        self.session.commit()
-
-    def inc_ya_int_registered_notified_stage(self, uid: int):
-        """Set the user's agreement to participate in the Yandex Internship."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"registered_notified_stage": YandexInternshipUser.registered_notified_stage + 1}))
-        self.session.commit()
-
-    def get_ya_int_registered_notified_last_ts(self, uid: int) -> int | None:
-        """Get the last time a registered notified notification has been sent by Yandex Internship."""
-        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
-        if user is None:
-            return False
-        return user.registered_notified_last_ts
-
-    def set_ya_int_registered_notified_last_ts(self, uid: int,
-                                               registered_notified_last_ts: datetime | None = None) -> None:
-        """Set the last time a registered notified notification has been sent by Yandex Internship."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"registered_notified_last_ts": (registered_notified_last_ts
-                                                      if registered_notified_last_ts is not None
-                                                      else datetime.utcnow())}))
-        self.session.commit()
-
-    def set_ya_int_is_registered_confirmed(self, uid: int, is_registered_confirmed: bool):
-        """Set the user's agreement to participate in the Yandex Internship."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"is_registered_confirmed": is_registered_confirmed}))
-        self.session.commit()
-
-    def set_ya_int_is_flow_activated(self, uid: int, is_flow_activated: bool) -> None:
-        """Set the user's agreement to participate in the Yandex Internship."""
-        (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"is_flow_activated": is_flow_activated}))
-        self.session.commit()
-
-    def get_ya_int_is_flow_activated(self, uid: int) -> bool:
-        """Get the user's agreement to participate in the Yandex Internship."""
-        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
-        if user is None:
-            return False
-        return user.is_flow_activated
-
-    def set_ya_int_flow_last_ts(self, uid: int, timestamp: datetime | None = None) -> None:
-        """
-        Set last timestamp of Yandex Internship flow.
-
-        Defaults to datetime.utcnow().
-        """
-        (self.session.query(YandexInternshipUser)
-            .filter(YandexInternshipUser.uid == uid)
-            .update({"flow_last_ts": (timestamp if timestamp is not None else datetime.utcnow())}))
-
-    def set_ya_int_flow_json(self, uid: int, flow_json: dict):
-        """Set the user's agreement to participate in the Yandex Internship."""
-        if self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first() is None:
-            self.session.add(YandexInternshipUser(uid=uid, agreed=False, flow_json=flow_json))
-        else:
-            (self.session.query(YandexInternshipUser)
-             .filter(YandexInternshipUser.uid == uid)
-             .update({"flow_json": flow_json}))
-        self.session.commit()
-
-    def get_ya_int_flow_json(self, uid: int) -> dict:
-        """Get the user's agreement to participate in the Yandex Internship."""
-        user = self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).first()
-        if user is None:
-            return {}
-        return user.flow_json
-
-    def get_uid_by_phone(self, phone: int) -> int | None:
-        """Get user by phone."""
-        user = self.session.query(UserData).filter(UserData.phone == phone).first()
-        if user is None:
-            return None
-        return user.uid
-
-    # region Debug
-    def dec_ya_int_user_timestamps(self, phone: int, delta: timedelta) -> None:
-        """Decrease user's timestamps by delta."""
-        uid = self.get_uid_by_phone(phone)
-        if uid is None:
-            raise AttributeError("User not found")
-        self.session.query(YandexInternshipUser).filter(YandexInternshipUser.uid == uid).update({
-            "ts": YandexInternshipUser.ts - delta,
-            "flow_last_ts": YandexInternshipUser.flow_last_ts - delta,
-            "registered_notified_last_ts": YandexInternshipUser.registered_notified_last_ts - delta,
-        })
-        self.session.commit()
-    # endregion
     # endregion

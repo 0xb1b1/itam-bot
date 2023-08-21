@@ -12,7 +12,6 @@ from aiogram import types
 from aiogram.dispatcher.filters.builtin import CommandStart
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.types.chat import ChatActions
-from logging import Logger
 # endregion
 
 # region Local dependencies
@@ -22,21 +21,19 @@ from modules.db import DBManager
 from modules.bot.generic import BotGenericFunctions
 from modules.bot import decorators as dp
 from modules.media import stickers
-from modules.bot.handlers.yandex_internship import yandex_internship_start  # Start routines
 # endregion
 
 # region Passed by setup()
 db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
-log: Logger = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
 
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} from \
-chat {message.chat.id} called command `{message.text}`') or True
-admin_only = lambda message: db.is_admin(message.from_user.id)
-groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+chat {message.chat.id} called command `{message.text}`') or True  # noqa: E731
+admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 
 
@@ -71,8 +68,10 @@ async def bot_send_welcome(message: Union[types.Message, types.CallbackQuery], u
                              reply_markup=ReplyKeyboardRemove())
         await bot.send_chat_action(message.chat.id, ChatActions.TYPING)
         await asyncio.sleep(0.5)
-        if args[0] == 'ya_int':
-            await yandex_internship_start(message, deeplink=True)
+        # if args[0] == 'ya_int':
+        #     await yandex_internship_start(message, deeplink=True)
+        if False:
+            pass
         else:
             await message.answer(replies.start_command_not_found())
 

@@ -11,6 +11,7 @@ RUN pip install -r requirements.txt
 
 # Copy required files to working directory
 COPY bot.py .
+COPY config.py .
 COPY __main__.py .
 COPY modules/ ./modules/
 

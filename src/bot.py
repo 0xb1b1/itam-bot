@@ -40,9 +40,9 @@ from modules.bot.generic import BotGenericFunctions      # Bot generic functions
 
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} from chat {message.chat.id} \
-called command `{message.text}`') or True
-admin_only = lambda message: db.is_admin(message.from_user.id)
-groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+called command `{message.text}`') or True  # noqa: E731
+admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 # endregion
 
@@ -195,7 +195,6 @@ def run() -> None:
         chat_mgr, \
         clubs, \
         departments, \
-        yandex_internship, \
         navigation
     start.setup(dp, bot, db, bot_generic)
     skills.setup(dp, bot, db, bot_generic)
@@ -207,7 +206,6 @@ def run() -> None:
     chat_mgr.setup(dp, bot, db, bot_broadcast, bot_generic)
     clubs.setup(dp, bot, db, bot_broadcast, bot_generic)
     departments.setup(dp, bot, db, bot_generic)
-    # yandex_internship.setup(dp, bot, db, bot_broadcast, bot_generic)
     navigation.setup(dp, bot, db, bot_generic)
     # endregion
 

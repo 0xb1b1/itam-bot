@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+from logging import Logger
 from os import getenv
 
 # region Logging setup

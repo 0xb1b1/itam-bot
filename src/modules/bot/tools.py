@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 """Common tools."""
 from typing import Union
 from aiogram import types

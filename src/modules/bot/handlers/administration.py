@@ -3,7 +3,8 @@
 
 """Bot administration handlers."""
 # region Regular dependencies
-import io, csv
+import io
+import csv
 from typing import Union
 from aiogram import Bot, Dispatcher
 from aiogram import types
@@ -12,10 +13,10 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
 from aiogram.utils.exceptions import MessageNotModified, BotKicked
 from sqlalchemy.exc import DataError
-from logging import Logger
 # endregion
 
 # region Local dependencies
+from config import log
 from modules import btntext
 from modules.coworking import Manager as CoworkingManager
 from modules import replies
@@ -31,7 +32,6 @@ from modules import constants
 # region Passed by setup()
 db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
-log: Logger = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 coworking: CoworkingManager = None  # type: ignore
@@ -39,9 +39,9 @@ coworking: CoworkingManager = None  # type: ignore
 
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} from chat \
-{message.chat.id} called command `{message.text}`') or True
-admin_only = lambda message: db.is_admin(message.from_user.id)
-groups_only = lambda message: message.chat.type in ['group', 'supergroup']
+{message.chat.id} called command `{message.text}`') or True  # noqa: E731
+admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 
 
@@ -51,7 +51,7 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']
 async def admin_panel(msg: Union[types.Message, types.CallbackQuery]):
     """Send admin panel."""
     user_id = msg.from_user.id
-    if user_id not in [1989957381, 232200895, 201667444]:
+    if user_id not in [1989957381, 232200895, 201667444]:  # TODO: REMOVE NIPPEL
         await msg.answer(replies.admin_panel_access_denied())
         log.info(f"User {user_id} tried to open the admin panel; denied access")
         return
@@ -65,13 +65,10 @@ async def admin_panel(msg: Union[types.Message, types.CallbackQuery]):
                                                       callback_data='change_user_group')
     inl_admin_broadcast_btn = InlineKeyboardButton(btntext.INL_ADMIN_BROADCAST,
                                                    callback_data='admin:broadcast')
-    inl_admin_yandex_internship_btn = InlineKeyboardButton(btntext.INL_ADMIN_YANDEX_INTERNSHIP,
-                                                           callback_data='admin:yandex_internship')
     inl_admin_stats_btn = InlineKeyboardButton(btntext.INL_ADMIN_STATS,
                                                callback_data='admin:stats')
     markup = InlineKeyboardMarkup().add(inl_admin_change_group_btn,
                                         inl_admin_broadcast_btn,
-                                        inl_admin_yandex_internship_btn,
                                         inl_admin_stats_btn)
     if override_msg:
         await msg.edit_text(replies.admin_panel(), reply_markup=markup)
@@ -111,6 +108,7 @@ async def get_stats(call: types.CallbackQuery) -> None:
 @dp.callback_query_handler(lambda c: c.data == 'change_user_group')
 async def change_user_group_stage0(call: types.CallbackQuery, state: FSMContext) -> None:
     """Change user group, stage 0."""
+    await call.answer()
     await state.set_state(AdminChangeUserGroup.user_id.state)
     await call.message.edit_text(f"Введите ID пользователя\n\n{replies.cancel_action()}")
 
