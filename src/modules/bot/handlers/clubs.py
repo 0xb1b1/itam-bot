@@ -10,7 +10,7 @@ from aiogram.utils import exceptions
 # endregion
 
 # region Local dependencies
-from config import log
+from config import log, db
 from modules import markup as nav
 from modules import btntext
 from modules import replies
@@ -21,7 +21,6 @@ from modules.bot import decorators as dp
 # endregion
 
 # region Passed by setup()
-db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
@@ -90,17 +89,14 @@ async def club_info(call: types.CallbackQuery) -> None:
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
-          database: DBManager,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     global bot
-    global db
     global bot_broadcast
     global bot_generic
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

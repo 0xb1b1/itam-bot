@@ -15,7 +15,7 @@ from logging import Logger
 
 # endregion
 # region Local dependencies
-from config import log
+from config import log, db
 from modules import markup as nav
 from modules import btntext
 from modules import replies
@@ -28,7 +28,6 @@ from modules.markup import get_skill_inl_kb, get_profile_edit_fields_kb
 # endregion
 
 # region Passed by setup()
-db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
@@ -322,15 +321,12 @@ async def profile_setup_phone(message: types.Message, state: FSMContext):
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
-          database: DBManager,
           generic: BotGenericFunctions):
     """Setup handlers for bot."""
     global bot
-    global db
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

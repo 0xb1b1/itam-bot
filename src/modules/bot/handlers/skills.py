@@ -9,7 +9,7 @@ from aiogram import types
 
 # endregion
 # region Local dependencies
-from config import log
+from config import log, db
 # import modules.bot.tools as bot_tools
 from modules import markup as nav
 from modules import btntext
@@ -20,7 +20,6 @@ from .replies import skills as sk_replies
 # endregion
 
 # region Passed by setup()
-db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
@@ -47,14 +46,11 @@ async def bot_skills_menu(message: types.Message, reopened: bool = False):
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
-          database: DBManager,
           generic: BotGenericFunctions):
     global bot
-    global db
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

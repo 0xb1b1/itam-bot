@@ -10,7 +10,7 @@ from aiogram import types
 # endregion
 
 # region Local dependencies
-from config import log
+from config import log, db
 import modules.bot.tools as bot_tools
 from modules import replies
 from modules.db import DBManager
@@ -20,7 +20,6 @@ from modules.bot import decorators as dp
 # endregion
 
 # region Passed by setup()
-db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
@@ -100,17 +99,14 @@ async def notify_status(message: types.Message) -> None:
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
-          database: DBManager,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     global bot
-    global db
     global bot_broadcast
     global bot_generic
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

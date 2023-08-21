@@ -11,12 +11,12 @@ from aiogram import types
 from aiogram.types.message import ParseMode
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
-from aiogram.utils.exceptions import MessageNotModified, BotKicked
+from aiogram.utils.exceptions import MessageNotModified, BotKicked, MessageTextIsEmpty
 from sqlalchemy.exc import DataError
 # endregion
 
 # region Local dependencies
-from config import log
+from config import log, db
 from modules import btntext
 from modules.coworking import Manager as CoworkingManager
 from modules import replies
@@ -30,7 +30,6 @@ from modules import constants
 # endregion
 
 # region Passed by setup()
-db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
@@ -81,7 +80,10 @@ async def admin_panel(msg: Union[types.Message, types.CallbackQuery]):
 @dp.message_handler(admin_only, commands=['get_notif_db'])
 async def get_notif_db(message: types.Message):
     """Get notification database."""
-    await message.answer(db.get_coworking_notification_chats_str())
+    try:
+        await message.answer(db.get_coworking_notification_chats_str())
+    except MessageTextIsEmpty:
+        await message.answer("Nothing to show here")
 
 
 @dp.callback_query_handler(lambda c: c.data == 'admin:stats')
@@ -274,18 +276,15 @@ async def reply_with_id(message: types.Message):
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
-          database: DBManager,
           broadcast: BotBroadcastFunctions,
           generic: BotGenericFunctions):
     global bot
-    global db
     global bot_broadcast
     global bot_generic
     global coworking
     bot = bot_obj
     bot_broadcast = broadcast
     bot_generic = generic
-    db = database
     coworking = CoworkingManager(db)
     for func in globals().values():
         if hasattr(func, '_handlers'):

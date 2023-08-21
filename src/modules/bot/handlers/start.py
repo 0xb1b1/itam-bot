@@ -15,7 +15,7 @@ from aiogram.types.chat import ChatActions
 # endregion
 
 # region Local dependencies
-from config import log
+from config import log, db
 from modules import replies
 from modules.db import DBManager
 from modules.bot.generic import BotGenericFunctions
@@ -24,7 +24,6 @@ from modules.media import stickers
 # endregion
 
 # region Passed by setup()
-db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
 # endregion
@@ -79,14 +78,11 @@ async def bot_send_welcome(message: Union[types.Message, types.CallbackQuery], u
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
-          database: DBManager,
           generic: BotGenericFunctions):
     global bot
-    global db
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:

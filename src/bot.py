@@ -19,14 +19,14 @@ from fastapi import FastAPI
 # endregion
 
 # region Local dependencies
-from config import log
+from config import log, db
+from config import TELEGRAM_API_TOKEN
 # import modules.bot.tools as bot_tools           # Bot tools
 # from modules import markup as nav           # Bot menus
 from modules import btntext                 # Telegram bot button text
 # from modules import replies                 # Telegram bot information output
 from modules import coworking               # Coworking space information
 from modules import replies                 # Telegram bot information output
-from modules.db import DBManager            # Operations with sqlite db
 # from modules.models import CoworkingStatus  # Coworking status model
 from modules.bot.help import BotHelpFunctions  # Bot help menu functions
 from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related functions
@@ -46,18 +46,12 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # no
 # endregion
 # endregion
 
-# Database
-db = DBManager(log)
-
 # region Modules
 # Coworking status
 coworking = coworking.Manager(db)
 # endregion
 
 # region Bot initialization
-# Get Telegram API token
-TELEGRAM_API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
-
 # Initialize bot and dispatcher
 bot = Bot(token=TELEGRAM_API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
@@ -196,17 +190,17 @@ def run() -> None:
         clubs, \
         departments, \
         navigation
-    start.setup(dp, bot, db, bot_generic)
-    skills.setup(dp, bot, db, bot_generic)
-    administration.setup(dp, bot, db, bot_broadcast, bot_generic)
-    coworking_mut.setup(dp, bot, db, bot_broadcast, bot_generic, bot_cw)
-    coworking_info.setup(dp, bot, db, bot_broadcast, bot_generic, bot_cw)
-    user_profile.setup(dp, bot, db, bot_generic)
-    broadcast_flow.setup(dp, bot, db, bot_broadcast, bot_generic)
-    chat_mgr.setup(dp, bot, db, bot_broadcast, bot_generic)
-    clubs.setup(dp, bot, db, bot_broadcast, bot_generic)
-    departments.setup(dp, bot, db, bot_generic)
-    navigation.setup(dp, bot, db, bot_generic)
+    start.setup(dp, bot, bot_generic)
+    skills.setup(dp, bot, bot_generic)
+    administration.setup(dp, bot, bot_broadcast, bot_generic)
+    coworking_mut.setup(dp, bot, bot_broadcast, bot_generic, bot_cw)
+    coworking_info.setup(dp, bot, bot_broadcast, bot_generic, bot_cw)
+    user_profile.setup(dp, bot, bot_generic)
+    broadcast_flow.setup(dp, bot, bot_broadcast, bot_generic)
+    chat_mgr.setup(dp, bot, bot_broadcast, bot_generic)
+    clubs.setup(dp, bot, bot_broadcast, bot_generic)
+    departments.setup(dp, bot, bot_generic)
+    navigation.setup(dp, bot, bot_generic)
     # endregion
 
     # Add plaintext handler

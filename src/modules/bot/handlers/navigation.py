@@ -9,7 +9,7 @@ from aiogram.types.message import ParseMode
 # endregion
 
 # region Local dependencies
-from config import log
+from config import log, db
 from modules import markup as nav
 from modules.db import DBManager
 from modules.bot.broadcast import BotBroadcastFunctions
@@ -22,7 +22,6 @@ from .keyboards import navigation as dir_keyboards
 # endregion
 
 # region Passed by setup()
-db: DBManager = None  # type: ignore
 bot: Bot = None  # type: ignore
 bot_broadcast: BotBroadcastFunctions = None  # type: ignore
 bot_generic: BotGenericFunctions = None  # type: ignore
@@ -58,14 +57,11 @@ async def back(call: types.CallbackQuery):
 # noinspection PyProtectedMember
 def setup(dispatcher: Dispatcher,
           bot_obj: Bot,
-          database: DBManager,
           generic: BotGenericFunctions):
     global bot
-    global db
     global bot_generic
     bot = bot_obj
     bot_generic = generic
-    db = database
     for func in globals().values():
         if hasattr(func, '_handlers'):
             for handler_type, args, kwargs in func._handlers:
