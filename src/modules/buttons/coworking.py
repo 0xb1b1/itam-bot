@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from modules import btntext
+from modules.static import btntext
 from aiogram.types import InlineKeyboardButton
 
 inl_open = InlineKeyboardButton(btntext.OPEN_COWORKING, callback_data='coworking:open')

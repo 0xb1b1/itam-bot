@@ -10,8 +10,8 @@ from aiogram.types.message import ParseMode
 
 # region Local dependencies
 from config import log, db
-from modules import markup as nav
-from modules.db import DBManager
+from modules.static import markup as nav
+from modules.db.db import ITAMBotAsyncMongoDB
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
 from modules.bot import decorators as dp  # Bot decorators

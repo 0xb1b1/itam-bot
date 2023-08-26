@@ -12,8 +12,8 @@ from aiogram import types
 # region Local dependencies
 from config import log, db
 import modules.bot.tools as bot_tools
-from modules import replies
-from modules.db import DBManager
+from modules.static import replies
+from modules.db.db import ITAMBotAsyncMongoDB
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
 from modules.bot import decorators as dp

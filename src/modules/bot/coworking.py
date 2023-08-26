@@ -9,10 +9,10 @@ from aiogram.types import InlineKeyboardMarkup as InlKbMarkup
 from aiogram.types import InlineKeyboardButton as InlKbBtn
 # from aiogram.types.message import ParseMode
 
-from modules import btntext, replies
+from modules.static import btntext, replies
 # from modules import coworking
-from modules.db import CoworkingStatus
-from modules.coworking import Manager as CoworkingManager
+from modules.db.db.spaces.spaces import SpaceStates
+from modules.coworking import Manager as CoworkingManager  #! TODO: redo for mongo
 from modules.buttons import coworking as cwbtn  # Coworking action buttons
 from modules.bot.broadcast import BotBroadcastFunctions
 

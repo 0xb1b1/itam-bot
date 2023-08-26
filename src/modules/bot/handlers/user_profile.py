@@ -16,10 +16,10 @@ from logging import Logger
 # endregion
 # region Local dependencies
 from config import log, db
-from modules import markup as nav
-from modules import btntext
-from modules import replies
-from modules.db import DBManager
+from modules.static import markup as nav
+from modules.static import btntext
+from modules.static import replies
+from modules.db.db import ITAMBotAsyncMongoDB
 from modules.models import Skill
 from modules.bot.generic import BotGenericFunctions
 from modules.bot.states import UserEditProfile, UserProfileSetup
@@ -35,7 +35,7 @@ bot_generic: BotGenericFunctions = None  # type: ignore
 # region Lambda functions
 debug_dec = lambda message: log.debug(f'User {message.from_user.id} from \
 chat {message.chat.id} called command `{message.text}`') or True  # noqa: E731
-admin_only = lambda message: db.is_admin(message.from_user.id)  # noqa: E731
+admin_only = lambda message: db.user.admin.exists(message.from_user.id)  # noqa: E731
 groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # noqa: E731
 # endregion
 
@@ -49,7 +49,7 @@ async def profile_info(message: types.Message) -> None:
         return
     try:
         await bot.send_message(message.from_user.id,
-                               replies.profile_info(db.get_user_data(message.from_user.id)),
+                               replies.profile_info(db.user.get(message.from_user.id)),
                                reply_markup=nav.inlProfileMenu)
     except TypeError:
         await bot.send_message(message.from_user.id,
@@ -59,13 +59,13 @@ async def profile_info(message: types.Message) -> None:
 @dp.message_handler(commands=['bio'])
 async def user_data_get_bio(message: types.Message) -> None:
     """Get user bio."""
-    await message.answer(db.get_user_data_bio(message.from_user.id))
+    await message.answer(db.user.info.get_bio(message.from_user.id))
 
 
 @dp.message_handler(commands=['resume'])
 async def user_data_get_resume(message: types.Message) -> None:
     """Get user resume."""
-    await message.answer(db.get_user_data_resume(message.from_user.id))
+    await message.answer(db.user.info.get_resume(message.from_user.id))  #! TODO: Add resume field
 
 
 @dp.callback_query_handler(lambda c: c.data == 'profile:edit')
@@ -74,11 +74,11 @@ async def edit_profile(call: types.CallbackQuery, secondary_run: bool = False) -
     keyboard = get_profile_edit_fields_kb()
     if not secondary_run:
         await call.answer()
-        await call.message.edit_text(replies.profile_info(db.get_user_data(call.from_user.id)),
+        await call.message.edit_text(replies.profile_info(db.user.get(call.from_user.id)),
                                      reply_markup=keyboard)
     else:
         await bot.send_message(call.from_user.id,
-                               replies.profile_info(db.get_user_data(call.from_user.id)),
+                               replies.profile_info(db.user.get(call.from_user.id)),
                                reply_markup=keyboard)
     mkb_remove = await call.message.answer("Убираю основную клавиатуру...", reply_markup=ReplyKeyboardRemove())
     await mkb_remove.delete()
@@ -121,7 +121,7 @@ async def edit_profile_done(call: types.CallbackQuery, state: FSMContext) -> Non
     """Edit user profile (Original state)."""
     await state.finish()
     await call.answer()
-    await call.message.edit_text(replies.profile_info(db.get_user_data(call.from_user.id)),
+    await call.message.edit_text(replies.profile_info(db.user.get(call.from_user.id)),
                                  reply_markup=nav.inlProfileMenu)
     await call.message.answer("Восстанавливаю основную клавиатуру...",
                               reply_markup=bot_generic.get_main_keyboard(call.from_user.id))
@@ -141,7 +141,7 @@ async def edit_profile_skills(call: Union[types.CallbackQuery, types.Message],
     await state.set_state(UserEditProfile.skills)
     if not manual_run and call.data == 'profile:edit:skill:done':
         await call.answer()
-        await call.message.edit_text(replies.profile_info(db.get_user_data(call.from_user.id)),
+        await call.message.edit_text(replies.profile_info(db.user.get(call.from_user.id)),
                                      reply_markup=get_profile_edit_fields_kb())
         await state.finish()
         return
@@ -150,10 +150,10 @@ async def edit_profile_skills(call: Union[types.CallbackQuery, types.Message],
         action = split[3]
         skill = Skill[split[4]]
         if action == 'add':
-            db.add_user_skills(call.from_user.id, skill)
+            db.user.skill.add(call.from_user.id, skill)
         elif action == 'remove':
-            db.remove_user_skill(call.from_user.id, skill)
-    user_data = db.get_user_data(call.from_user.id)
+            db.user.skill.rm(call.from_user.id, skill)
+    user_data = db.user.get(call.from_user.id)
     keyboard = get_skill_inl_kb(user_data['skills'])
     cmessage = call.message if isinstance(call, types.CallbackQuery) else call
     if not message_to_be_edited:
@@ -167,8 +167,8 @@ async def edit_profile_first_name(message: types.Message, state: FSMContext):
     """Edit user profile first name."""
     profile_call = (await state.get_data())['profile_call']
     await state.update_data(first_name=message.text)
-    db.set_user_first_name(message.from_user.id, message.text)
-    await profile_call.message.edit_text(replies.profile_info(db.get_user_data(profile_call.from_user.id)),
+    db.user.info.set_first_name(message.from_user.id, message.text)
+    await profile_call.message.edit_text(replies.profile_info(db.user.get(profile_call.from_user.id)),
                                          reply_markup=get_profile_edit_fields_kb())
     await message.delete()
     await state.finish()
@@ -179,8 +179,8 @@ async def edit_profile_last_name(message: types.Message, state: FSMContext):
     """Edit user profile last name."""
     profile_call = (await state.get_data())['profile_call']
     await state.update_data(last_name=message.text)
-    db.set_user_last_name(message.from_user.id, message.text)
-    await profile_call.message.edit_text(replies.profile_info(db.get_user_data(profile_call.from_user.id)),
+    db.user.info.set_last_name(message.from_user.id, message.text)
+    await profile_call.message.edit_text(replies.profile_info(db.user.get(profile_call.from_user.id)),
                                          reply_markup=get_profile_edit_fields_kb())
     await message.delete()
     await state.finish()
@@ -200,8 +200,8 @@ async def edit_profile_birthday(message: types.Message, state: FSMContext):
             pass
         return
     await state.update_data(birthday=birthday)
-    db.set_user_birthday(message.from_user.id, birthday)
-    await profile_call.message.edit_text(replies.profile_info(db.get_user_data(profile_call.from_user.id)),
+    db.user.info.set_birthday(message.from_user.id, birthday)
+    await profile_call.message.edit_text(replies.profile_info(db.user.get(profile_call.from_user.id)),
                                          reply_markup=get_profile_edit_fields_kb())
     await message.delete()
     await state.finish()
@@ -212,7 +212,7 @@ async def edit_profile_email(message: types.Message, state: FSMContext):
     """Edit user profile email."""
     profile_call = (await state.get_data())['profile_call']
     try:
-        db.set_user_email(message.from_user.id, message.text)
+        db.user.contact.set_email(message.from_user.id, message.text)
     except ValueError:
         await message.delete()
         try:
@@ -220,7 +220,7 @@ async def edit_profile_email(message: types.Message, state: FSMContext):
         except MessageNotModified:
             pass
         return
-    await profile_call.message.edit_text(replies.profile_info(db.get_user_data(profile_call.from_user.id)),
+    await profile_call.message.edit_text(replies.profile_info(db.user.get(profile_call.from_user.id)),
                                          reply_markup=get_profile_edit_fields_kb())
     await message.delete()
     await state.finish()
@@ -231,7 +231,7 @@ async def edit_profile_phone(message: types.Message, state: FSMContext):
     """Edit user profile phone."""
     profile_call = (await state.get_data())['profile_call']
     try:
-        db.set_user_phone(message.from_user.id, message.text)
+        db.user.contact.set_phone_number(message.from_user.id, message.text)
     except ValueError:
         await message.delete()
         try:
@@ -239,7 +239,7 @@ async def edit_profile_phone(message: types.Message, state: FSMContext):
         except MessageNotModified:
             pass
         return
-    await profile_call.message.edit_text(replies.profile_info(db.get_user_data(profile_call.from_user.id)),
+    await profile_call.message.edit_text(replies.profile_info(db.user.get(profile_call.from_user.id)),
                                          reply_markup=get_profile_edit_fields_kb())
     await message.delete()
     await state.finish()
@@ -261,7 +261,7 @@ async def profile_setup(call: types.CallbackQuery):
 async def profile_setup_first_name(message: types.Message, state: FSMContext):
     """Profile setup first name."""
     await state.update_data(first_name=message.text)
-    db.set_user_first_name(message.from_user.id, message.text)
+    db.user.info.set_first_name(message.from_user.id, message.text)
     await message.answer(replies.profile_setup_last_name(message.text),
                          reply_markup=nav.inlCancelMenu)
     await state.set_state(UserProfileSetup.last_name)
@@ -271,7 +271,7 @@ async def profile_setup_first_name(message: types.Message, state: FSMContext):
 async def profile_setup_last_name(message: types.Message, state: FSMContext):
     """Profile setup last name."""
     await state.update_data(last_name=message.text)
-    db.set_user_last_name(message.from_user.id, message.text)
+    db.user.info.set_last_name(message.from_user.id, message.text)
     await message.answer(replies.profile_setup_birthday(message.text),
                          reply_markup=nav.inlCancelMenu)
     await state.set_state(UserProfileSetup.birthday)
@@ -285,7 +285,7 @@ async def profile_setup_birthday(message: types.Message, state: FSMContext):
     except ValueError:
         await message.answer(replies.invalid_date_try_again())
         return
-    db.set_user_birthday(message.from_user.id, birthday)
+    db.user.info.set_birthday(message.from_user.id, birthday)
     await message.answer(replies.profile_setup_email(birthday),
                          reply_markup=nav.inlCancelMenu)
     await state.set_state(UserProfileSetup.email)
@@ -295,7 +295,7 @@ async def profile_setup_birthday(message: types.Message, state: FSMContext):
 async def profile_setup_email(message: types.Message, state: FSMContext):
     """Profile setup email."""
     try:
-        db.set_user_email(message.from_user.id, message.text)
+        db.user.contant.set_email(message.from_user.id, message.text)
     except ValueError:
         await message.answer(replies.invalid_email_try_again())
         return
@@ -308,7 +308,7 @@ async def profile_setup_email(message: types.Message, state: FSMContext):
 async def profile_setup_phone(message: types.Message, state: FSMContext):
     """Profile setup phone."""
     try:
-        db.set_user_phone(message.from_user.id, message.text)
+        db.user.contant.set_phone_number(message.from_user.id, message.text)
     except ValueError:
         await message.answer(replies.invalid_phone_try_again())
         return

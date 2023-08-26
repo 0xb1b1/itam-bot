@@ -5,9 +5,9 @@ from typing import List
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.types import InlineKeyboardMarkup as InlKbMarkup
 from aiogram.types import InlineKeyboardButton as InlKbBtn
-from modules import btntext as btns
+from modules.static import btntext as btns
 
-from modules import replies
+from modules.static import replies
 from modules.db import Skill
 
 

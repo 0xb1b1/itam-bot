@@ -6,8 +6,8 @@ from aiogram import types
 from aiogram.types import KeyboardButton, InlineKeyboardMarkup, \
     ReplyKeyboardMarkup, ReplyKeyboardRemove
 
-from modules import btntext
-from modules import constants
+from modules.static import btntext
+from modules.static import constants
 
 
 class BotGenericFunctions:

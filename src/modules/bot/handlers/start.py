@@ -16,8 +16,8 @@ from aiogram.types.chat import ChatActions
 
 # region Local dependencies
 from config import log, db
-from modules import replies
-from modules.db import DBManager
+from modules.static import replies
+from modules.db.db import ITAMBotAsyncMongoDB
 from modules.bot.generic import BotGenericFunctions
 from modules.bot import decorators as dp
 from modules.media import stickers

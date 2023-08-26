@@ -21,21 +21,12 @@ from fastapi import FastAPI
 # region Local dependencies
 from config import log, db
 from config import TELEGRAM_API_TOKEN
-# import modules.bot.tools as bot_tools           # Bot tools
-# from modules import markup as nav           # Bot menus
-from modules import btntext                 # Telegram bot button text
-# from modules import replies                 # Telegram bot information output
-from modules import coworking               # Coworking space information
-from modules import replies                 # Telegram bot information output
-# from modules.models import CoworkingStatus  # Coworking status model
-from modules.bot.help import BotHelpFunctions  # Bot help menu functions
+from modules.static import btntext                 # Telegram bot button text
+# from modules import coworking               # Coworking space information
+from modules.static import replies                 # Telegram bot information output
 from modules.bot.coworking import BotCoworkingFunctions  # Bot coworking-related functions
-from modules.bot.scheduled import BotScheduledFunctions  # Bot scheduled functions (recurring)
 from modules.bot.broadcast import BotBroadcastFunctions  # Bot broadcast functions
 from modules.bot.generic import BotGenericFunctions      # Bot generic functions
-# from modules.bot.states import *
-# from modules.buttons import coworking as cwbtn  # Coworking action buttons (admin)
-# from modules import stickers
 # endregion
 
 # region Lambda functions
@@ -48,7 +39,7 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # no
 
 # region Modules
 # Coworking status
-coworking = coworking.Manager(db)
+# coworking = coworking.Manager(db)  #! TODO: Redo for mongo
 # endregion
 
 # region Bot initialization
@@ -58,9 +49,7 @@ dp = Dispatcher(bot, storage=MemoryStorage())
 # endregion
 
 # region Post-bot-init modules
-bot_help = BotHelpFunctions(bot, db, log)
 bot_cw = BotCoworkingFunctions(bot, db, log)
-bot_scheduled = BotScheduledFunctions(bot, db, log)
 bot_broadcast = BotBroadcastFunctions(bot, db, log)
 bot_generic = BotGenericFunctions(bot, db, log)
 # endregion
@@ -98,17 +87,17 @@ async def bot_credits(call: types.CallbackQuery) -> None:
 # endregion
 
 
-# region Help
-@dp.message_handler(lambda message: message.text == btntext.HELP_MAIN)
-@dp.message_handler(commands=['help'])
-async def bot_help_menu(message: types.Message):
-    await bot_help.main(message)
+# # region Help
+# @dp.message_handler(lambda message: message.text == btntext.HELP_MAIN)
+# @dp.message_handler(commands=['help'])
+# async def bot_help_menu(message: types.Message):
+#     await bot_help.main(message)
 
 
-@dp.callback_query_handler(lambda c: c.data == 'coworking:location')
-async def bot_coworking_location(call: types.CallbackQuery) -> None:
-    await bot_help.location(call)
-# endregion
+# @dp.callback_query_handler(lambda c: c.data == 'coworking:location')
+# async def bot_coworking_location(call: types.CallbackQuery) -> None:
+#     await bot_help.location(call)
+# # endregion
 
 
 # Normal messages
@@ -124,21 +113,6 @@ async def answer(message: types.Message) -> None:
                 db.set_uname(message.from_user.id, message.from_user.username)
             else:
                 await message.answer(replies.please_click_start())
-    # Menus
-    text_lower = message.text.lower()
-
-    # Plaintext message answers — checking db value for ChatSettings.message_answers_enabled
-    if bot_generic.chat_is_group(message):
-        if not db.get_message_answers_status(message.chat.id):
-            log.debug(f"Received a message in a group, but plaintext_message_answers is False for {message.chat.id}")
-            return
-
-    if any(word in text_lower for word in ['коворк', 'кв']) and any(word in text_lower for word in ['статус',
-                                                                                                    'открыт',
-                                                                                                    'закрыт']):
-        await message.answer(replies.coworking_status_reply(coworking.get_status(),
-                                                            responsible_uname=db.get_coworking_responsible_uname()),
-                             reply_markup=bot_generic.get_main_keyboard(message))
 # endregion
 
 
@@ -169,13 +143,7 @@ async def run_loop():
 
 # region Startup
 def run() -> None:
-    loop = asyncio.get_event_loop()
-    loop.create_task(bot_scheduled.coworking_status_checker(datetime.strptime(f'2021-09-01 \
-{os.getenv("COWORKING_OPENING_TIME", "09:00:00")}', '%Y-%m-%d %H:%M:%S'),
-                                                            datetime.strptime(f'2021-09-01 \
-{os.getenv("COWORKING_CLOSING_TIME", "19:00:00")}', '%Y-%m-%d %H:%M:%S'),
-                                                            timeout=int(os.getenv('COWORKING_STATUS_WORKER_TIMEOUT',
-                                                                                  '120'))))
+    # loop = asyncio.get_event_loop()
     log.info('Starting AIOGram...')
 
     # region Message handlers

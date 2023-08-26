@@ -4,7 +4,7 @@ import logging
 from logging import Logger
 from os import getenv
 
-from modules.db import DBManager
+from modules.db.db import ITAMBotAsyncMongoDB
 
 # region Logging setup
 # Create a logger instance
@@ -44,7 +44,8 @@ elif LOGGING_LEVEL == "CRITICAL":
 # endregion
 
 # region Database setup
-db = DBManager(log)
+db = ITAMBotAsyncMongoDB(getenv("MONGODB_URL",
+                                "mongodb://localhost:27017/"))
 # endregion
 
 # Region Telegram Bot setup

@@ -6,7 +6,7 @@ from aiogram.types import InlineKeyboardMarkup as InlKbMkup
 from aiogram.types import InlineKeyboardButton as InlKbBtn
 
 from modules.models import Skill
-from modules import btntext as btns
+from modules.static import btntext as btns
 from modules.replies import skill_names as profile_skill_names
 
 

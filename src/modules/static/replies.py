@@ -3,8 +3,8 @@
 from datetime import datetime
 
 # region Local dependencies
-from modules import btntext as btn
-from modules.models import CoworkingStatus
+from modules.static import btntext as btn
+# from modules.models import CoworkingStatus  #! TODO: redo for mongo
 # endregion
 
 
@@ -235,67 +235,67 @@ def coworking_notifications_off() -> str:
     return "🔔🔴 Уведомления о статусе коворкинга выключены"
 
 
-def get_coworking_status_reply_data(status: CoworkingStatus,
-                                    responsible_uname: str = None,
-                                    delta_mins: int = 0,
-                                    responsible_account: bool = True,
-                                    one_newline: bool = False) -> tuple:
-    """Return reply data for coworking status"""
-    newline = "\n" if one_newline else "\n\n"
-    postfix_msg = f"{newline}Ответственный: @{responsible_uname}" if responsible_account else ""
-    if delta_mins > 0 and delta_mins is not None:
-        postfix_msg = f" (на {delta_mins} минут)!" + postfix_msg
-    if status == CoworkingStatus.open:
-        status_icon = "🟢"
-        status_str = f"открыт{postfix_msg}"
-    elif status == CoworkingStatus.event_open:
-        status_icon = "🟡"
-        status_str = f"открыт (проходит мероприятие!){postfix_msg}"
-    elif status == CoworkingStatus.event_closed:
-        status_icon = "⛔️"
-        status_str = f"закрыт на мероприятие{postfix_msg}"
-    elif status == CoworkingStatus.temp_closed:
-        status_icon = "🟠"
-        status_str = f"временно закрыт{postfix_msg}"  # User without `@`
-    elif status == CoworkingStatus.closed:
-        status_icon = "🔴"
-        status_str = f"закрыт{postfix_msg}"
-    else:
-        status_icon = "❓"
-        status_str = "[статус неизвестен]"
-    return status_icon, status_str
+# def get_coworking_status_reply_data(status: CoworkingStatus,
+#                                     responsible_uname: str = None,
+#                                     delta_mins: int = 0,
+#                                     responsible_account: bool = True,
+#                                     one_newline: bool = False) -> tuple:
+#     """Return reply data for coworking status"""
+#     newline = "\n" if one_newline else "\n\n"
+#     postfix_msg = f"{newline}Ответственный: @{responsible_uname}" if responsible_account else ""
+#     if delta_mins > 0 and delta_mins is not None:
+#         postfix_msg = f" (на {delta_mins} минут)!" + postfix_msg
+#     if status == CoworkingStatus.open:
+#         status_icon = "🟢"
+#         status_str = f"открыт{postfix_msg}"
+#     elif status == CoworkingStatus.event_open:
+#         status_icon = "🟡"
+#         status_str = f"открыт (проходит мероприятие!){postfix_msg}"
+#     elif status == CoworkingStatus.event_closed:
+#         status_icon = "⛔️"
+#         status_str = f"закрыт на мероприятие{postfix_msg}"
+#     elif status == CoworkingStatus.temp_closed:
+#         status_icon = "🟠"
+#         status_str = f"временно закрыт{postfix_msg}"  # User without `@`
+#     elif status == CoworkingStatus.closed:
+#         status_icon = "🔴"
+#         status_str = f"закрыт{postfix_msg}"
+#     else:
+#         status_icon = "❓"
+#         status_str = "[статус неизвестен]"
+#     return status_icon, status_str
 
 
-def coworking_status_reply(status: CoworkingStatus,
-                           responsible_uname: str = "(не назначен)",
-                           delta_mins: int = 0) -> str:
-    """Return coworking status reply string"""
-    status_icon, status_str = get_coworking_status_reply_data(status,
-                                                              responsible_uname=responsible_uname,
-                                                              delta_mins=delta_mins)
-    return f"🔑{status_icon} Коворкинг ITAM {status_str}"
+# def coworking_status_reply(status: CoworkingStatus,
+#                            responsible_uname: str = "(не назначен)",
+#                            delta_mins: int = 0) -> str:
+#     """Return coworking status reply string"""
+#     status_icon, status_str = get_coworking_status_reply_data(status,
+#                                                               responsible_uname=responsible_uname,
+#                                                               delta_mins=delta_mins)
+#     return f"🔑{status_icon} Коворкинг ITAM {status_str}"
 
 
-def switch_coworking_status_inline_binary_action(status: CoworkingStatus) -> str:
-    """Return coworking status inline action (to do) string [open/close]"""
-    status_icon, status_str = get_coworking_status_reply_data(status, responsible_account=False)
-    status_inl = status_str + " " + status_icon
-    if status in [CoworkingStatus.open, CoworkingStatus.event_open]:
-        action_inl = "Закрыть"
-    elif status in [CoworkingStatus.temp_closed, CoworkingStatus.closed]:
-        action_inl = "Открыть"
-    else:
-        raise ValueError("Invalid status")
-    return f"{action_inl} коворкинг (сейчас {status_inl})"
+# def switch_coworking_status_inline_binary_action(status: CoworkingStatus) -> str:
+#     """Return coworking status inline action (to do) string [open/close]"""
+#     status_icon, status_str = get_coworking_status_reply_data(status, responsible_account=False)
+#     status_inl = status_str + " " + status_icon
+#     if status in [CoworkingStatus.open, CoworkingStatus.event_open]:
+#         action_inl = "Закрыть"
+#     elif status in [CoworkingStatus.temp_closed, CoworkingStatus.closed]:
+#         action_inl = "Открыть"
+#     else:
+#         raise ValueError("Invalid status")
+#     return f"{action_inl} коворкинг (сейчас {status_inl})"
 
 
-def coworking_status_changed(status: CoworkingStatus,
-                             responsible_uname: str = "(не назначен)",
-                             delta_mins: int = 0) -> str:
-    status_icon, status_str = get_coworking_status_reply_data(status,
-                                                              responsible_uname=responsible_uname,
-                                                              delta_mins=delta_mins)
-    return f"🔑{status_icon} Коворкинг ITAM {status_str}"
+# def coworking_status_changed(status: CoworkingStatus,
+#                              responsible_uname: str = "(не назначен)",
+#                              delta_mins: int = 0) -> str:
+#     status_icon, status_str = get_coworking_status_reply_data(status,
+#                                                               responsible_uname=responsible_uname,
+#                                                               delta_mins=delta_mins)
+#     return f"🔑{status_icon} Коворкинг ITAM {status_str}"
 
 
 def plaintext_answers_reply(status: bool, toggled: bool = False, chat_id: int = None, admin_uname: str = None) -> str:

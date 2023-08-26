@@ -17,11 +17,11 @@ from aiogram.types import ChatType
 
 # region Local dependencies
 from config import log, db
-from modules import markup as nav
-from modules import btntext
+from modules.static import markup as nav
+from modules.static import btntext
 from modules.coworking import Manager as CoworkingManager
-from modules import replies
-from modules.db import DBManager
+from modules.static import replies
+from modules.db.db import ITAMBotAsyncMongoDB
 from modules.models import CoworkingStatus
 from modules.bot.coworking import BotCoworkingFunctions
 from modules.bot.broadcast import BotBroadcastFunctions

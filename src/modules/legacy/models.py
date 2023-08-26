@@ -60,13 +60,13 @@ class Skill(enum.IntEnum):
         return self.name.capitalize().replace('_', ' ')
 
 
-class CoworkingStatus(enum.IntEnum):
-    """Coworking statuses."""
-    open = 1
-    event_open = 2
-    temp_closed = 3
-    closed = 4
-    event_closed = 5
+# class CoworkingStatus(enum.IntEnum):
+#     """Coworking statuses."""
+#     open = 1
+#     event_open = 2
+#     temp_closed = 3
+#     closed = 4
+#     event_closed = 5
 # endregion
 
 

@@ -11,11 +11,11 @@ from aiogram.types.message import ParseMode
 from aiogram.types import ContentType
 from aiogram import Bot
 
-# from modules import btntext, replies
-from modules.db import CoworkingStatus, DBManager
+# from modules.static import btntext, replies
+from modules.db.db import ITAMBotAsyncMongoDB
 from modules.coworking import Manager as CoworkingManager
 # from modules.buttons import coworking as cwbtn  # Coworking action buttons
-from modules import replies
+from modules.static import replies
 
 
 class BotBroadcastFunctions:
@@ -23,7 +23,7 @@ class BotBroadcastFunctions:
 
     def __init__(self, bot, db, log):
         """Initialize bot broadcast-related methods."""
-        self.db: DBManager = db
+        self.db: ITAMBotAsyncMongoDB = db
         self.bot: Bot = bot
         self.cwman = CoworkingManager(db)
         self.log = log
@@ -44,9 +44,9 @@ class BotBroadcastFunctions:
         if custom_scope:
             chat_ids = custom_scope
         elif scope == 'all':
-            chat_ids = self.db.get_all_chats()
+            chat_ids = self.db.user.get_all_ids()
         elif scope == 'admins':
-            chat_ids = self.db.get_admin_chats()
+            chat_ids = self.db.admin.get_all_ids()
         elif scope == 'users':
             chat_ids = self.db.get_user_chats()
         else:
@@ -152,19 +152,19 @@ class BotBroadcastFunctions:
             self.log.debug(f"Failed to send broadcast message to chat {cid}: \
 {exc}; user probably blocked the bot")
 
-    async def coworking(self,
-                        status: CoworkingStatus,
-                        delta_mins: int = 0):
-        """Broadcast coworking status change to all users."""
-        cids = self.db.get_coworking_notification_chats()
-        responsible_uname = self.db.get_coworking_responsible_uname()
-        reply = (replies
-                 .coworking_status_changed(status,
-                                           responsible_uname=responsible_uname,
-                                           delta_mins=delta_mins))
-        for cid in cids:
-            try:
-                await self.bot.send_message(cid, reply)
-            except Exception as exc:
-                self.log.debug(f'{cid}: Failed to send message with \
-error {exc}; user probably blocked the bot')
+#     async def coworking(self,
+#                         status: CoworkingStatus,
+#                         delta_mins: int = 0):
+#         """Broadcast coworking status change to all users."""
+#         cids = self.db.get_coworking_notification_chats()
+#         responsible_uname = self.db.get_coworking_responsible_uname()
+#         reply = (replies
+#                  .coworking_status_changed(status,
+#                                            responsible_uname=responsible_uname,
+#                                            delta_mins=delta_mins))
+#         for cid in cids:
+#             try:
+#                 await self.bot.send_message(cid, reply)
+#             except Exception as exc:
+#                 self.log.debug(f'{cid}: Failed to send message with \
+# error {exc}; user probably blocked the bot')

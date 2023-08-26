@@ -11,9 +11,9 @@ from aiogram import types
 # region Local dependencies
 from config import log, db
 # import modules.bot.tools as bot_tools
-from modules import markup as nav
-from modules import btntext
-from modules.db import DBManager
+from modules.static import markup as nav
+from modules.static import btntext
+from modules.db.db import ITAMBotAsyncMongoDB
 from modules.bot.generic import BotGenericFunctions
 from modules.bot import decorators as dp
 from .replies import skills as sk_replies

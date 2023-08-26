@@ -2,8 +2,9 @@
 
 """Coworking status manager."""
 # region Imports
-from modules.models import CoworkingStatus
-from .db import DBManager
+# from modules.models import CoworkingStatus  #! TODO: redo for mongo
+
+from modules.db.db import ITAMBotAsyncMongoDB
 # endregion
 
 
@@ -12,7 +13,7 @@ class Manager:
 
     def __init__(self, db):
         """Initialize coworking manager."""
-        self.db: DBManager = db
+        self.db: ITAMBotAsyncMongoDB = db
 
     # region Get status
     def get_status(self) -> CoworkingStatus:

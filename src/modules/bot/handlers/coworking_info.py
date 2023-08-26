@@ -12,11 +12,11 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # region Local dependencies
 from config import log, db
-from modules import btntext
+from modules.static import btntext
 from modules.coworking import Manager as CoworkingManager
-from modules import replies
-from modules.db import DBManager
-from modules.models import CoworkingStatus
+from modules.static import replies
+from modules.db.db import ITAMBotAsyncMongoDB
+# from modules.models import CoworkingStatus  #! TODO: redo for mongo
 from modules.bot.coworking import BotCoworkingFunctions
 from modules.bot.broadcast import BotBroadcastFunctions
 from modules.bot.generic import BotGenericFunctions
@@ -40,37 +40,37 @@ groups_only = lambda message: message.chat.type in ['group', 'supergroup']  # no
 # endregion
 
 
-@dp.message_handler(lambda message: message.text == btntext.COWORKING_STATUS)
-@dp.message_handler(commands=['coworking_status', 'cw_status'])
-async def coworking_status_reply(message: types.Message) -> None:
-    # Deny access to group chats
-    if bot_generic.chat_is_group(message):
-        await message.answer(replies.coworking_status_only_in_pm())
-        return
-    if db.is_admin(message.from_user.id):
-        inl_coworking_control_menu = bot_cw.get_admin_markup_full(message)
-    else:
-        inl_coworking_control_menu = InlineKeyboardMarkup()
-        are_notifications_on = db.get_coworking_notifications(message.chat.id)
-        inl_coworking_control_menu.add(cwbtn.inl_location_short)
-        (inl_coworking_control_menu
-         .add(InlineKeyboardButton(replies.toggle_coworking_notifications(are_notifications_on),
-                                   callback_data='coworking:toggle_notifications')))
-        inl_coworking_control_menu.add(InlineKeyboardButton(btntext.INL_COWORKING_STATUS_EXPLAIN,
-                                                            callback_data='coworking:status:explain'))
-    try:
-        status = coworking.get_status()
-        if status == CoworkingStatus.temp_closed:
-            await message.answer(replies.coworking_status_reply(status,
-                                                                responsible_uname=db.get_coworking_responsible_uname(),
-                                                                delta_mins=coworking.get_delta()),
-                                 reply_markup=inl_coworking_control_menu)
-        else:
-            await message.answer(replies.coworking_status_reply(status,
-                                                                responsible_uname=db.get_coworking_responsible_uname()),
-                                 reply_markup=inl_coworking_control_menu)
-    except Exception as exc:
-        log.error(f"Error while getting coworking status: {exc}")
+# @dp.message_handler(lambda message: message.text == btntext.COWORKING_STATUS)
+# @dp.message_handler(commands=['coworking_status', 'cw_status'])
+# async def coworking_status_reply(message: types.Message) -> None:
+#     # Deny access to group chats
+#     if bot_generic.chat_is_group(message):
+#         await message.answer(replies.coworking_status_only_in_pm())
+#         return
+#     if db.is_admin(message.from_user.id):
+#         inl_coworking_control_menu = bot_cw.get_admin_markup_full(message)
+#     else:
+#         inl_coworking_control_menu = InlineKeyboardMarkup()
+#         are_notifications_on = db.get_coworking_notifications(message.chat.id)
+#         inl_coworking_control_menu.add(cwbtn.inl_location_short)
+#         (inl_coworking_control_menu
+#          .add(InlineKeyboardButton(replies.toggle_coworking_notifications(are_notifications_on),
+#                                    callback_data='coworking:toggle_notifications')))
+#         inl_coworking_control_menu.add(InlineKeyboardButton(btntext.INL_COWORKING_STATUS_EXPLAIN,
+#                                                             callback_data='coworking:status:explain'))
+#     try:
+#         status = coworking.get_status()
+#         if status == CoworkingStatus.temp_closed:
+#             await message.answer(replies.coworking_status_reply(status,
+#                                                                 responsible_uname=db.get_coworking_responsible_uname(),
+#                                                                 delta_mins=coworking.get_delta()),
+#                                  reply_markup=inl_coworking_control_menu)
+#         else:
+#             await message.answer(replies.coworking_status_reply(status,
+#                                                                 responsible_uname=db.get_coworking_responsible_uname()),
+#                                  reply_markup=inl_coworking_control_menu)
+#     except Exception as exc:
+#         log.error(f"Error while getting coworking status: {exc}")
 
 
 @dp.callback_query_handler(lambda c: c.data == 'coworking:status:explain')
